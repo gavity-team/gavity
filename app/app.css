@@ -1,0 +1,45 @@
+@import "tailwindcss";
+@import "@nuxt/ui";
+
+:root {
+  --ui-radius: 2px;
+  --ui-text-dimmed: #737373;
+  --ui-text-muted: #525252;
+
+  /*
+   * brand 色板（浅色模式 = 蓝色）
+   * 等同于 Tailwind blue 色阶
+   */
+  --color-brand-50: #eff6ff;
+  --color-brand-100: #dbeafe;
+  --color-brand-200: #bfdbfe;
+  --color-brand-300: #93c5fd;
+  --color-brand-400: #60a5fa;
+  --color-brand-500: #3b82f6;
+  --color-brand-600: #2563eb;
+  --color-brand-700: #1d4ed8;
+  --color-brand-800: #1e40af;
+  --color-brand-900: #1e3a8a;
+  --color-brand-950: #172554;
+}
+
+.dark {
+  --ui-text-dimmed: #A3A3A3;
+  --ui-text-muted: #D4D4D4;
+
+  /*
+   * brand 色板（深色模式）
+   * 400 = #6464C8（生产环境深色主题色）
+   */
+  --color-brand-50: #f0f0fa;
+  --color-brand-100: #e0e0f5;
+  --color-brand-200: #c4c4ed;
+  --color-brand-300: #9a9adc;
+  --color-brand-400: #6464C8;
+  --color-brand-500: #5050b0;
+  --color-brand-600: #40408c;
+  --color-brand-700: #35356e;
+  --color-brand-800: #282852;
+  --color-brand-900: #1e1e3e;
+  --color-brand-950: #13132a;
+}

@@ -1,0 +1,37 @@
+services:
+  db:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: gavity
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-gavity}
+      POSTGRES_DB: gavity
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U gavity -d gavity]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  app:
+    image: gavityteam/gavity:latest
+    ports:
+      - ${PORT:-6545}:3000
+    environment:
+      DATABASE_URL: postgres://gavity:${POSTGRES_PASSWORD:-gavity}@db:5432/gavity
+      DB_AUTO_MIGRATE: 'true'
+      EXTERNAL_URL: ${EXTERNAL_URL:-http://localhost:3000}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      SMTP_FROM: ${SMTP_FROM}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  db-data:
