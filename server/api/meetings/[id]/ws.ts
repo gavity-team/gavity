@@ -1,7 +1,8 @@
 import type { PeerIdentity, RoomPeer } from '#server/utils/rooms';
 import { eq } from 'drizzle-orm';
-import { auth } from '#server/utils/auth';
-import { db } from '#server/utils/db';
+import { defineWebSocketHandler } from 'h3';
+import { getAuth } from '#server/utils/auth';
+import { getDb } from '#server/utils/db';
 import { meetings } from '#server/utils/db/schema';
 import { handleAction, joinRoom, leaveRoom, touchPresence } from '#server/utils/rooms';
 import { ClientAction } from '#shared/utils/protocol';
@@ -12,7 +13,7 @@ import { ClientAction } from '#shared/utils/protocol';
  */
 export default defineWebSocketHandler({
   async upgrade(request) {
-    const session = await auth.api.getSession({ headers: request.headers });
+    const session = await getAuth().api.getSession({ headers: request.headers });
     if (!session)
       return new Response('请先登录', { status: 401 });
     if (!session.user.emailVerified)
@@ -23,7 +24,7 @@ export default defineWebSocketHandler({
     const meetingId = Number.parseInt(segments[segments.length - 2] ?? '', 10);
     if (!Number.isInteger(meetingId))
       return new Response('会议不存在', { status: 404 });
-    const [row] = await db.select({ id: meetings.id }).from(meetings).where(eq(meetings.id, meetingId));
+    const [row] = await getDb().select({ id: meetings.id }).from(meetings).where(eq(meetings.id, meetingId));
     if (!row)
       return new Response('会议不存在', { status: 404 });
 

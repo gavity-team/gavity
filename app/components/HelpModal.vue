@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { uiState } from '~/utils/ui';
+
 const sections = [
   {
     title: '发言权机制',

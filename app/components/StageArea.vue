@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import type { AgendaItem, VoteResult } from '#shared/utils/mettings';
+import { computed } from 'vue';
 import { AgendaItemStatusMap, MeetingStatusMap, VoteMethodMap } from '#shared/utils/mettings';
+import { activeMotions, laidAsideMotions, motionMeta } from '#shared/utils/rules';
+import { meetingState } from '~/utils/meetings';
 
 const meeting = computed(() => meetingState.meeting);
 const currentItem = computed(() => meeting.value.agenda.find(a => a.id === meeting.value.currentAgendaId) ?? null);

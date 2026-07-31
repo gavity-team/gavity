@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import type { Motion, MotionCategory } from '#shared/utils/mettings';
+import { computed } from 'vue';
 import { MotionCategoryMap, MotionStatusMap } from '#shared/utils/mettings';
+import { canCastBallot, canOpenVote, canSecondMotion, MOTION_CATEGORY_LABELS, MOTION_STATUS_LABELS, motionMeta } from '#shared/utils/rules';
+import { closeVote, formatTime, meetingState, resolveRuling, secondMotion, userName } from '~/utils/meetings';
+import { notifyError, thresholdLabel, uiState } from '~/utils/ui';
 
 const props = defineProps<{
   motion: Motion

@@ -1,4 +1,9 @@
 <script setup lang="ts">
+import { watch } from 'vue';
+import { isMember } from '#shared/utils/rules';
+import { meetingState } from '~/utils/meetings';
+import { uiState } from '~/utils/ui';
+
 // 投票开启时自动弹出投票弹窗（含切换身份后补投）
 watch(
   [() => meetingState.meeting.activeVote, () => meetingState.currentUserId],

@@ -1,5 +1,9 @@
 <script setup lang="ts">
+import { computed, nextTick, onUnmounted, ref, useTemplateRef, watch } from 'vue';
 import { AgendaItemStatusMap, MeetingStatusMap } from '#shared/utils/mettings';
+import { canGrabFloor, canSwitchAgenda, roleOf } from '#shared/utils/rules';
+import { endFloor, formatTime, grabFloor, meetingState, switchAgenda } from '~/utils/meetings';
+import { notifyError, uiState } from '~/utils/ui';
 
 const meeting = computed(() => meetingState.meeting);
 const selfId = computed(() => meetingState.currentUserId);

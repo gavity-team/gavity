@@ -1,7 +1,12 @@
 <script setup lang="ts">
 import type { TableColumn } from '@nuxt/ui';
 import type { Motion, MotionStatus, MotionType } from '#shared/utils/mettings';
+import { useToast } from '@nuxt/ui/runtime/composables/useToast.js';
+import { computed, reactive, ref, watch } from 'vue';
 import { MotionStatusMap, MotionTypeMap } from '#shared/utils/mettings';
+import { MOTION_CATEGORY_LABELS, MOTION_STATUS_LABELS, motionMeta } from '#shared/utils/rules';
+import { formatTime, meetingState, updateMotion, userName } from '~/utils/meetings';
+import { uiState } from '~/utils/ui';
 
 const toast = useToast();
 

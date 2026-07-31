@@ -1,5 +1,9 @@
 import type { ClientAction, RosterEntry, ServerMessage } from '#shared/utils/protocol';
 import type { MeetingDriver } from './meetings';
+import { useToast } from '@nuxt/ui/runtime/composables/useToast.js';
+import { navigateTo } from '#app';
+import { maxVoteId, meetingState, resetDriver, setDriver } from './meetings';
+import { notifyError, uiState } from './ui';
 
 /**
  * 多人会议远程驱动：动作经同源 WebSocket 交由服务端权威执行，

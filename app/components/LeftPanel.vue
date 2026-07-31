@@ -1,4 +1,9 @@
 <script setup lang="ts">
+import { computed, ref } from 'vue';
+import { canAssignFloor, isChair, roleOf } from '#shared/utils/rules';
+import { assignFloor, meetingState, userName } from '~/utils/meetings';
+import { notifyError, uiState } from '~/utils/ui';
+
 const meeting = computed(() => meetingState.meeting);
 
 /** 侧栏默认折叠，仅显示竖排头像；拖动边缘 rail 可展开。 */

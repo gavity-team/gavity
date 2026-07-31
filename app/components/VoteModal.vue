@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import type { Ballot } from '#shared/utils/mettings';
+import { useToast } from '@nuxt/ui/runtime/composables/useToast.js';
+import { computed, onUnmounted, ref, watch } from 'vue';
 import { BallotMap } from '#shared/utils/mettings';
+import { motionMeta, VOTE_METHOD_LABELS } from '#shared/utils/rules';
+import { castBallot, closeVote, meetingState } from '~/utils/meetings';
+import { notifyError, thresholdLabel, uiState } from '~/utils/ui';
 
 const toast = useToast();
 

@@ -1,3 +1,6 @@
+// upstream: https://github.com/nuxt/nuxt/commit/8e27051ab427eaf048f08cece3f8d7f0e1711e64
+const defineAppConfig = (x: any) => x;
+
 export default defineAppConfig({
   ui: {
     colors: {

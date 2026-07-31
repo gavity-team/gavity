@@ -1,4 +1,9 @@
 <script setup lang="ts">
+import { computed, ref } from 'vue';
+import { navigateTo } from '#app';
+import { authClient } from '~/utils/auth';
+import { notifyError } from '~/utils/ui';
+
 /** useSession 返回 DeepReadonly Ref（初始值可能为 undefined），这里用 computed 取出便于模板使用。 */
 const sessionState = authClient.useSession();
 const session = computed(() => sessionState.value?.data ?? null);

@@ -1,12 +1,12 @@
-import process from 'node:process';
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
-import { db } from '../utils/db';
+import { getDb } from '#server/utils/db';
+import { getEnvConfig } from '#server/utils/env';
 
-/** 启动时自动应用 drizzle 迁移（容器部署用，DB_AUTO_MIGRATE=true 开启）。 */
+// upstream: https://github.com/nuxt/nuxt/issues/15088
+const defineNitroPlugin = (x: any) => x;
+
 export default defineNitroPlugin(async () => {
-  if (process.env.DB_AUTO_MIGRATE !== 'true')
+  if (!getEnvConfig().DB_AUTO_MIGRATE)
     return;
-  console.warn('[db] auto migrating...');
-  await migrate(db, { migrationsFolder: 'migrations' });
-  console.warn('[db] migrations applied');
+  await migrate(getDb(), { migrationsFolder: 'migrations' });
 });

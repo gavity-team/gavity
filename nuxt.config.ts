@@ -21,6 +21,10 @@ export default defineNuxtConfig({
 
   ssr: false,
 
+  imports: {
+    autoImport: false,
+  },
+
   nitro: {
     preset: 'bun',
 
@@ -35,15 +39,12 @@ export default defineNuxtConfig({
         description: '基于罗伯特议事规则的会议协作工具',
         version,
       },
+      // upstream: https://github.com/better-auth/better-auth/issues/8125
       production: 'runtime',
-      ui: {
-        scalar: {
-          sources: [
-            { title: 'Main', url: '/_openapi.json' },
-            { title: 'Auth', url: '/api/auth/open-api/generate-schema' },
-          ],
-        },
-      },
+      // upstream: https://github.com/nitrojs/nitro/issues/4492#issuecomment-5120753163
+      // then,
+      // upstream: https://github.com/unjs/openapi-renderer/issues/27
+      ui: {},
     },
   },
 

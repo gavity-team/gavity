@@ -1,10 +1,12 @@
-import process from 'node:process';
 import { drizzleAdapter } from '@better-auth/drizzle-adapter/relations-v2';
 import { i18n } from '@better-auth/i18n';
 import { betterAuth } from 'better-auth/minimal';
 import { openAPI } from 'better-auth/plugins';
 import { emailOTP } from 'better-auth/plugins/email-otp';
-import { db } from './db';
+import { createError } from 'h3';
+import { getEnvConfig } from '#server/utils/env';
+import { toCachedFn } from '#shared/utils/fn';
+import { getDb } from './db';
 import * as schema from './db/schema';
 import { generateCode } from './id';
 import { sendMail } from './mail';
@@ -32,66 +34,75 @@ const ZH_TRANSLATIONS = {
   TOO_MANY_ATTEMPTS: '尝试次数过多，请重新获取验证码',
 };
 
-export const auth = betterAuth({
-  database: drizzleAdapter(db, {
-    provider: 'pg',
-    schema,
-    usePlural: true,
-  }),
+export const getAuth = toCachedFn(() => {
+  const env = getEnvConfig();
 
-  baseURL: process.env.EXTERNAL_URL!,
+  return betterAuth({
+    database: drizzleAdapter(getDb(), {
+      provider: 'pg',
+      schema,
+      usePlural: true,
+    }),
 
-  advanced: {
-    database: {
-      generateId: ({ model }) => generateCode(model === 'user' ? 8 : 16),
-    },
-    ipAddress: {
-      trustedProxies: [
-        '10.0.0.0/8',
-        '172.16.0.0/12',
-        '192.168.0.0/16',
-        '127.0.0.1/32',
-      ],
-    },
-  },
+    baseURL: env.EXTERNAL_URL,
 
-  emailAndPassword: {
-    enabled: true,
-    requireEmailVerification: true,
-  },
+    secret: env.SECRET,
 
-  emailVerification: {
-    autoSignInAfterVerification: true,
-  },
-
-  plugins: [
-    emailOTP({
-      sendVerificationOnSignUp: true,
-      overrideDefaultEmailVerification: true,
-      resendStrategy: 'reuse',
-      async sendVerificationOTP({ email, otp, type }) {
-        const subject = type === 'forget-password' ? 'Gavity 密码重置验证码' : 'Gavity 邮箱验证码';
-        await sendMail(email, subject, `你的验证码是 ${otp}，5 分钟内有效。若非本人操作，请忽略本邮件。`);
+    advanced: {
+      database: {
+        generateId: ({ model }) => generateCode(model === 'user' ? 8 : 16),
+        joins: true,
       },
-    }),
+      ipAddress: {
+        trustedProxies: [
+          '10.0.0.0/8',
+          '172.16.0.0/12',
+          '192.168.0.0/16',
+          '127.0.0.1/32',
+        ],
+      },
+    },
 
-    i18n({
-      defaultLocale: 'zh',
-      translations: { zh: ZH_TRANSLATIONS },
-    }),
+    emailAndPassword: {
+      enabled: true,
+      requireEmailVerification: true,
+    },
 
-    openAPI({ disableDefaultReference: true }),
-  ],
+    emailVerification: {
+      autoSignInAfterVerification: true,
+    },
 
-  trustedOrigins: [
-    'https://gavity.localhost',
-    process.env.EXTERNAL_URL!,
-  ],
+    plugins: [
+      emailOTP({
+        sendVerificationOnSignUp: true,
+        overrideDefaultEmailVerification: true,
+        resendStrategy: 'reuse',
+        async sendVerificationOTP({ email, otp, type }) {
+          const subject = type === 'forget-password' ? 'Gavity 密码重置验证码' : 'Gavity 邮箱验证码';
+          await sendMail(email, subject, `你的验证码是 ${otp}，5 分钟内有效。若非本人操作，请忽略本邮件。`);
+        },
+      }),
+
+      i18n({
+        defaultLocale: 'zh',
+        translations: { zh: ZH_TRANSLATIONS },
+      }),
+
+      openAPI({ disableDefaultReference: true }),
+    ],
+
+    trustedOrigins: [
+      'https://gavity.localhost',
+      env.EXTERNAL_URL,
+    ],
+  });
 });
 
+export type Auth = ReturnType<typeof getAuth>;
+
 /** 校验登录态与邮箱验证状态，未通过时抛出 HTTP 错误。 */
-export async function requireVerifiedSession(headers: Headers): Promise<NonNullable<Awaited<ReturnType<typeof auth.api.getSession>>>> {
-  const session = await auth.api.getSession({ headers });
+export async function requireVerifiedSession(headers: Headers): Promise<NonNullable<Awaited<ReturnType<Auth['api']['getSession']>>>> {
+  const session = await getAuth().api.getSession({ headers });
   if (!session) {
     throw createError({ statusCode: 401, message: '请先登录' });
   }

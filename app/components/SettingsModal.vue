@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import type { AgendaItemStatus } from '#shared/utils/mettings';
+import { useToast } from '@nuxt/ui/runtime/composables/useToast.js';
+import { computed, reactive, ref, watch } from 'vue';
 import { AgendaItemStatusMap } from '#shared/utils/mettings';
+import { roleOf } from '#shared/utils/rules';
+import { addAgendaItem, meetingState, moveAgendaItem, removeAgendaItem, setMemberRole, transferChair, updateAgendaItem, updateSettings, userName } from '~/utils/meetings';
+import { uiState } from '~/utils/ui';
 
 const toast = useToast();
 

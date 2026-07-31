@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { MotionType } from '#shared/utils/mettings';
+import { computed } from 'vue';
 import { MotionCategoryMap } from '#shared/utils/mettings';
+import { MOTION_CATEGORY_LABELS, MOTION_META } from '#shared/utils/rules';
 
 const props = defineProps<{
   /** 无发言权：禁用所有需要发言权（needsFloor）的动议类型。 */

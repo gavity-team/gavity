@@ -5,7 +5,7 @@ import { and, eq, gte, lt, sql } from 'drizzle-orm';
 import * as engine from '#shared/utils/meeting-engine';
 import { BallotMap, MeetingStatusMap, VoteMethodMap } from '#shared/utils/mettings';
 import { roleOf } from '#shared/utils/rules';
-import { db, pg } from './db';
+import { getDb, getPg } from './db';
 import { meetingCodes, meetingPresence, meetings } from './db/schema';
 
 /**
@@ -65,7 +65,7 @@ function sendTo(peer: RoomPeer, msg: ServerMessage): void {
 }
 
 async function notify(event: RoomEvent): Promise<void> {
-  await pg.notify(CHANNEL, JSON.stringify(event));
+  await getPg().notify(CHANNEL, JSON.stringify(event));
 }
 
 // ===== LISTEN / presence 扫描 =====
@@ -75,7 +75,7 @@ let sweepTimer: ReturnType<typeof setInterval> | null = null;
 
 /** 惰性建立 LISTEN 专用连接（postgres.js 断线自动重连），并启动 presence 扫描。 */
 function ensureListening(): Promise<unknown> {
-  listening ??= pg
+  listening ??= getPg()
     .listen(CHANNEL, (payload) => {
       try {
         void handleEvent(JSON.parse(payload) as RoomEvent);
@@ -105,15 +105,11 @@ async function sweep(): Promise<void> {
       }
     }
     // 刚跨过 20s 断线阈值的用户：广播其会议名册（窗口取两轮扫描，重复广播无害）
-    const justOffline = await db.select({ meetingId: meetingPresence.meetingId })
-      .from(meetingPresence)
-      .where(and(
-        lt(meetingPresence.lastSeenAt, new Date(now - OFFLINE_MS)),
-        gte(meetingPresence.lastSeenAt, new Date(now - OFFLINE_MS - SWEEP_MS * 2)),
-      ));
-    const stale = await db.delete(meetingPresence)
-      .where(lt(meetingPresence.lastSeenAt, new Date(now - REAP_MS)))
-      .returning({ meetingId: meetingPresence.meetingId });
+    const justOffline = await getDb().select({ meetingId: meetingPresence.meetingId }).from(meetingPresence).where(and(
+      lt(meetingPresence.lastSeenAt, new Date(now - OFFLINE_MS)),
+      gte(meetingPresence.lastSeenAt, new Date(now - OFFLINE_MS - SWEEP_MS * 2)),
+    ));
+    const stale = await getDb().delete(meetingPresence).where(lt(meetingPresence.lastSeenAt, new Date(now - REAP_MS))).returning({ meetingId: meetingPresence.meetingId });
     for (const meetingId of new Set([...justOffline, ...stale].map(r => r.meetingId)))
       await notify({ t: 'update', meetingId, fromSeq: 0, toSeq: 0 });
   } catch (err) {
@@ -125,18 +121,14 @@ async function sweep(): Promise<void> {
 export async function touchPresence(peer: RoomPeer): Promise<void> {
   const { meetingId, userId } = identityOf(peer);
   lastPingAt.set(peer, Date.now());
-  const [row] = await db.select({ connId: meetingPresence.connId, lastSeenAt: meetingPresence.lastSeenAt })
-    .from(meetingPresence)
-    .where(and(eq(meetingPresence.meetingId, meetingId), eq(meetingPresence.userId, userId)));
+  const [row] = await getDb().select({ connId: meetingPresence.connId, lastSeenAt: meetingPresence.lastSeenAt }).from(meetingPresence).where(and(eq(meetingPresence.meetingId, meetingId), eq(meetingPresence.userId, userId)));
   if (row && row.connId !== peer.id)
     return; // presence 已被新连接接管，旧连接的 ping 不再续命
   const wasOffline = !row || row.lastSeenAt.getTime() < Date.now() - OFFLINE_MS;
-  await db.insert(meetingPresence)
-    .values({ meetingId, userId, instanceId, connId: peer.id })
-    .onConflictDoUpdate({
-      target: [meetingPresence.meetingId, meetingPresence.userId],
-      set: { lastSeenAt: new Date() },
-    });
+  await getDb().insert(meetingPresence).values({ meetingId, userId, instanceId, connId: peer.id }).onConflictDoUpdate({
+    target: [meetingPresence.meetingId, meetingPresence.userId],
+    set: { lastSeenAt: new Date() },
+  });
   if (wasOffline)
     await notify({ t: 'update', meetingId, fromSeq: 0, toSeq: 0 });
 }
@@ -151,7 +143,7 @@ async function mutate(
   meetingId: number,
   fn: (state: MeetingEngineState) => string | null,
 ): Promise<{ error: string | null, state: MeetingEngineState, fromSeq: number, toSeq: number }> {
-  return db.transaction(async (tx) => {
+  return getDb().transaction(async (tx) => {
     await tx.execute(sql`select pg_advisory_xact_lock(${meetingId})`);
     const [row] = await tx.select().from(meetings).where(eq(meetings.id, meetingId));
     if (!row)
@@ -181,9 +173,7 @@ async function mutate(
 
 /** 名册 = 状态中的成员/旁听 + presence 表的在线情况。 */
 async function loadRoster(meetingId: number, state: MeetingEngineState): Promise<RosterEntry[]> {
-  const rows = await db.select({ userId: meetingPresence.userId, lastSeenAt: meetingPresence.lastSeenAt })
-    .from(meetingPresence)
-    .where(eq(meetingPresence.meetingId, meetingId));
+  const rows = await getDb().select({ userId: meetingPresence.userId, lastSeenAt: meetingPresence.lastSeenAt }).from(meetingPresence).where(eq(meetingPresence.meetingId, meetingId));
   const cutoff = Date.now() - OFFLINE_MS;
   const online = new Set(rows.filter(r => r.lastSeenAt.getTime() > cutoff).map(r => r.userId));
   const m = state.meeting;
@@ -219,7 +209,7 @@ async function handleEvent(event: RoomEvent): Promise<void> {
     kickLocal(event.meetingId, event.userId, event.keepConn);
     return;
   }
-  const [row] = await db.select({ state: meetings.state }).from(meetings).where(eq(meetings.id, event.meetingId));
+  const [row] = await getDb().select({ state: meetings.state }).from(meetings).where(eq(meetings.id, event.meetingId));
   const state = row?.state;
   if (!state)
     return;
@@ -269,12 +259,10 @@ export async function joinRoom(peer: RoomPeer): Promise<void> {
   });
 
   // 抢占 presence（单端限制），并踢掉新旧实例上的旧连接
-  await db.insert(meetingPresence)
-    .values({ meetingId, userId, instanceId, connId: peer.id })
-    .onConflictDoUpdate({
-      target: [meetingPresence.meetingId, meetingPresence.userId],
-      set: { instanceId, connId: peer.id, connectedAt: new Date(), lastSeenAt: new Date() },
-    });
+  await getDb().insert(meetingPresence).values({ meetingId, userId, instanceId, connId: peer.id }).onConflictDoUpdate({
+    target: [meetingPresence.meetingId, meetingPresence.userId],
+    set: { instanceId, connId: peer.id, connectedAt: new Date(), lastSeenAt: new Date() },
+  });
   kickLocal(meetingId, userId, peer.id);
   await notify({ t: 'kick', meetingId, userId, keepConn: peer.id });
 
@@ -311,7 +299,7 @@ export async function leaveRoom(peer: RoomPeer): Promise<void> {
   if (peers && !peers.size)
     localRooms.delete(meetingId);
   // 仅当 presence 仍归属本连接时删除（避免误删接替连接的行）
-  await db.delete(meetingPresence).where(and(
+  await getDb().delete(meetingPresence).where(and(
     eq(meetingPresence.meetingId, meetingId),
     eq(meetingPresence.userId, userId),
     eq(meetingPresence.connId, peer.id),

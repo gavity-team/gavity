@@ -1,4 +1,8 @@
 <script setup lang="ts">
+import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { navigateTo, useRoute } from '#app';
+import { authClient } from '~/utils/auth';
+
 const route = useRoute();
 
 // 登录 / 注册 双模式，支持 ?mode=register 直达注册
@@ -8,7 +12,7 @@ const step = ref<'form' | 'verify'>('form');
 const name = ref('');
 const email = ref('');
 const password = ref('');
-const otpDigits = ref<string[]>([]);
+const otpDigits = ref<number[]>([]);
 const pending = ref(false);
 const errorMessage = ref('');
 const resendCooldown = ref(0);

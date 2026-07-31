@@ -1,7 +1,12 @@
 <script setup lang="ts">
 import type { FormSubmitEvent } from '@nuxt/ui';
 import type { MotionType } from '#shared/utils/mettings';
+import { useToast } from '@nuxt/ui/runtime/composables/useToast.js';
+import { computed, reactive } from 'vue';
 import * as z from 'zod';
+import { motionMeta } from '#shared/utils/rules';
+import { meetingState, proposeMotion } from '~/utils/meetings';
+import { notifyError, thresholdLabel, uiState } from '~/utils/ui';
 
 const toast = useToast();
 

@@ -1,4 +1,9 @@
 <script setup lang="ts">
+import { computed, ref, watch } from 'vue';
+import { roleOf } from '#shared/utils/rules';
+import { assignFloor, meetingState, memberStats, userName } from '~/utils/meetings';
+import { notifyError, uiState } from '~/utils/ui';
+
 const meeting = computed(() => meetingState.meeting);
 const userId = computed(() => uiState.memberDetailId);
 const modalOpen = ref(false);

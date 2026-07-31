@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import type { VoteMethod } from '#shared/utils/mettings';
+import { computed, ref, watch } from 'vue';
 import { VoteMethodMap } from '#shared/utils/mettings';
+import { motionMeta, VOTE_METHOD_LABELS } from '#shared/utils/rules';
+import { declareVote, meetingState, openVote } from '~/utils/meetings';
+import { notifyError, uiState } from '~/utils/ui';
 
 const meeting = computed(() => meetingState.meeting);
 const motionId = computed(() => uiState.voteMethodMotionId);

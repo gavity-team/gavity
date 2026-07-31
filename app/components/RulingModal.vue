@@ -1,4 +1,8 @@
 <script setup lang="ts">
+import { computed } from 'vue';
+import { motionMeta } from '#shared/utils/rules';
+import { meetingState, resolveRuling, userName } from '~/utils/meetings';
+
 const meeting = computed(() => meetingState.meeting);
 
 const motion = computed(() => {

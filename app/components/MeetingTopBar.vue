@@ -1,5 +1,9 @@
 <script setup lang="ts">
+import { computed, ref } from 'vue';
 import { MeetingStatusMap } from '#shared/utils/mettings';
+import { canToggleRecordMode, MEETING_STATUS_LABELS, roleOf } from '#shared/utils/rules';
+import { DEMO_USERS, endMeeting, meetingState, resetMeeting, resumeMeeting, startMeeting, toggleRecordMode, userName } from '~/utils/meetings';
+import { notifyError, uiState } from '~/utils/ui';
 
 const meeting = computed(() => meetingState.meeting);
 const statusLabel = computed(() => MEETING_STATUS_LABELS[meeting.value.status]);

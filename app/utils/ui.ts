@@ -1,4 +1,6 @@
 import type { VoteTreshold } from '#shared/utils/mettings';
+import { useToast } from '@nuxt/ui/runtime/composables/useToast.js';
+import { reactive } from 'vue';
 import { VoteTresholdMap } from '#shared/utils/mettings';
 
 /** 弹窗等全局 UI 状态（非会议数据）。 */

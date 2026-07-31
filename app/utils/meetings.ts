@@ -11,11 +11,13 @@ import type {
   VoteMethod,
   VoteResult,
 } from '#shared/utils/mettings';
+import { reactive } from 'vue';
 import * as engine from '#shared/utils/meeting-engine';
 import {
   AgendaItemStatusMap,
   MeetingStatusMap,
 } from '#shared/utils/mettings';
+import { uiState } from './ui';
 
 export type { AgendaPatch, LogEntry, LogKind, LogTone, MemberStats, MotionInput, MotionPatch } from '#shared/utils/meeting-engine';
 
