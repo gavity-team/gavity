@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { navigateTo, useRoute } from '#app';
+import { definePageMeta } from '#imports';
 import { authClient } from '~/utils/auth';
+
+definePageMeta({ layout: false });
 
 const route = useRoute();
 
@@ -136,9 +139,7 @@ async function onResend(): Promise<void> {
   <div class="flex min-h-screen flex-col items-center justify-center bg-default p-4">
     <div class="w-full max-w-sm">
       <div class="flex items-center gap-2.5">
-        <div class="flex size-9 items-center justify-center bg-primary text-inverted">
-          <UIcon name="i-lucide-gavel" class="size-5" />
-        </div>
+        <img src="~/assets/brand/gavity-w-text.svg" alt="Gavity" class="h-9 w-auto">
         <div>
           <div class="text-base font-semibold text-highlighted">
             {{ step === 'verify' ? '验证邮箱' : (isRegister ? '注册 Gavity' : '登录 Gavity') }}

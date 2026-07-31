@@ -51,7 +51,6 @@ export const getAuth = toCachedFn(() => {
     advanced: {
       database: {
         generateId: ({ model }) => generateCode(model === 'user' ? 8 : 16),
-        joins: true,
       },
       ipAddress: {
         trustedProxies: [
@@ -70,6 +69,8 @@ export const getAuth = toCachedFn(() => {
 
     emailVerification: {
       autoSignInAfterVerification: true,
+      sendOnSignUp: true,
+      sendOnSignIn: false,
     },
 
     plugins: [

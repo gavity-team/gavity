@@ -55,16 +55,10 @@ function onResetMeeting(): void {
 <template>
   <header class="flex h-14 items-center gap-3 border-b border-default px-4 shrink-0">
     <div class="flex items-center gap-2 min-w-0">
-      <div class="flex size-8 items-center justify-center bg-primary text-inverted">
-        <UIcon name="i-lucide-gavel" class="size-5" />
-      </div>
-      <div class="min-w-0">
-        <div class="truncate text-sm font-semibold text-highlighted">
-          {{ meeting.profile.title }}
-        </div>
-        <div class="text-xs text-muted">
-          Gavity · 罗伯特议事规则
-        </div>
+      <img src="~/assets/brand/gavity-w-text.svg" alt="Gavity" class="h-10 w-auto">
+      <USeparator orientation="vertical" class="h-8 mx-2" />
+      <div class="truncate text-lg font-semibold text-highlighted">
+        {{ meeting.profile.title }}
       </div>
     </div>
 

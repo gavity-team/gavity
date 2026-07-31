@@ -9,7 +9,7 @@ import { connectMeeting, disconnectMeeting } from '~/utils/remote';
  * 多人实时会议：要求登录，动作经同源 WebSocket 交由
  * 服务端会议房间权威执行并广播同步。
  */
-definePageMeta({ middleware: 'auth' });
+definePageMeta({ middleware: 'auth', layout: false });
 
 const route = useRoute();
 const meetingId = computed(() => String(route.params.id));

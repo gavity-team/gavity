@@ -17,7 +17,6 @@ export default defineEventHandler(async (event) => {
     chairId: session.user.id,
     status: MeetingStatusMap.NOT_STARTED,
   }).returning({ id: meetings.id });
-  // 码空间 32^6，冲突时重新生成（碰撞概率极低，兜底重试即可）
   let code = '';
   for (let attempt = 0; attempt < 5; attempt++) {
     code = generateCode(CODE_LENGTH);
