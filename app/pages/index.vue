@@ -112,7 +112,7 @@ async function onJoin(event: FormSubmitEvent<JoinSchema>): Promise<void> {
             单人演示
           </div>
           <p class="mt-1 text-sm text-muted">
-            无需登录，与模拟与会者体验完整议事流程（发言权、动议、附议、表决）。
+            模拟一次完整的会议流程。
           </p>
         </div>
         <UButton
