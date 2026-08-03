@@ -1,10 +1,11 @@
 <script setup lang="ts">
+import type { SelectItem } from '@nuxt/ui/runtime/components/Select.vue';
 import type { AgendaItemStatus } from '#shared/utils/mettings';
 import { useToast } from '@nuxt/ui/runtime/composables/useToast.js';
 import { computed, reactive, ref, watch } from 'vue';
 import { AgendaItemStatusMap } from '#shared/utils/mettings';
 import { roleOf } from '#shared/utils/rules';
-import { addAgendaItem, meetingState, moveAgendaItem, removeAgendaItem, setMemberRole, transferChair, updateAgendaItem, updateSettings, userName } from '~/utils/meetings';
+import { addAgendaItem, meetingState, moveAgendaItem, removeAgendaItem, removeMember, setMemberRole, transferChair, updateAgendaItem, updateSettings, userName } from '~/utils/meetings';
 import { uiState } from '~/utils/ui';
 
 const toast = useToast();
@@ -135,7 +136,12 @@ const roleItems = [
   { label: '主持人', value: 'host' },
   { label: '成员', value: 'member' },
   { label: '旁听成员', value: 'observer' },
-];
+  { label: '移除', value: null, class: 'text-error!' },
+] satisfies SelectItem[];
+
+/** 待移除的用户 ID（在 after:leave 后清理）。 */
+const removeTargetId = ref<string | null>(null);
+const removeConfirmOpen = ref(false);
 
 /** 待移交主持人的目标 id（在 after:leave 后清理，避免关闭动画期间内容闪烁）。 */
 const transferTargetId = ref<string | null>(null);
@@ -144,6 +150,10 @@ const transferConfirmOpen = ref(false);
 function onRoleChange(user: string, role: unknown): void {
   if (role === roleOf(meeting.value, user))
     return;
+  if (role === null) {
+    onRemoveMember(user);
+    return;
+  }
   if (role === 'host') {
     transferTargetId.value = user;
     transferConfirmOpen.value = true;
@@ -152,6 +162,20 @@ function onRoleChange(user: string, role: unknown): void {
   const err = setMemberRole(user, role as 'member' | 'observer');
   if (err)
     toast.add({ title: err, color: 'error', icon: 'i-lucide-circle-alert' });
+}
+
+function onRemoveMember(targetId: string): void {
+  removeTargetId.value = targetId;
+  removeConfirmOpen.value = true;
+}
+
+function confirmRemove(): void {
+  if (removeTargetId.value == null)
+    return;
+  const err = removeMember(removeTargetId.value);
+  if (err)
+    toast.add({ title: err, color: 'error', icon: 'i-lucide-circle-alert' });
+  removeConfirmOpen.value = false;
 }
 
 function confirmTransfer(): void {
@@ -167,7 +191,7 @@ function confirmTransfer(): void {
 <template>
   <UModal v-model:open="uiState.settingsModalOpen" title="会议设置" description="会议基本信息与议事规则配置。" :ui="{ footer: 'justify-end', body: 'max-h-[60vh] overflow-y-auto' }">
     <template #body>
-      <div class="space-y-4">
+      <div v-if="canEdit" class="space-y-4">
         <UFormField label="会议名称">
           <UInput v-model="form.title" :disabled="!canEdit" class="w-full" />
         </UFormField>
@@ -185,10 +209,10 @@ function confirmTransfer(): void {
               <UButton icon="i-lucide-copy" color="neutral" variant="outline" size="xs" @click="copyCode(code)" />
             </div>
             <p v-if="!joinCodes.length" class="text-xs text-dimmed">
-              暂无入会码（会议结束后自动释放）。
+              暂无入会码
             </p>
             <p v-else class="text-xs text-dimmed">
-              与会者凭码加入会议；会议结束后自动释放。
+              与会者凭码加入会议
             </p>
           </div>
         </template>
@@ -210,7 +234,7 @@ function confirmTransfer(): void {
               <span v-if="item.scheduledAt" class="text-xs text-dimmed">
                 {{ new Date(item.scheduledAt).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) }}
               </span>
-              <UFieldGroup v-if="canEdit">
+              <UFieldGroup>
                 <UButton icon="i-lucide-chevron-up" color="neutral" variant="outline" size="xs" :disabled="index === 0" @click="moveItem(item.id, 'up')" />
                 <UButton icon="i-lucide-chevron-down" color="neutral" variant="outline" size="xs" :disabled="index === meeting.agenda.length - 1" @click="moveItem(item.id, 'down')" />
                 <UButton icon="i-lucide-pencil" color="neutral" variant="outline" size="xs" @click="startEdit(item)" />
@@ -235,7 +259,7 @@ function confirmTransfer(): void {
           </div>
         </div>
 
-        <div v-if="canEdit" class="space-y-2 rounded-none border border-dashed border-default p-3">
+        <div class="space-y-2 rounded-none border border-dashed border-default p-3">
           <UInput v-model="newAgenda.title" placeholder="新议题标题" class="w-full" />
           <div class="flex gap-2">
             <UInput v-model="newAgenda.details" placeholder="议题说明（可选）" class="flex-1" />
@@ -254,18 +278,18 @@ function confirmTransfer(): void {
           >
             <UAvatar :alt="userName(user)" size="2xs" />
             <span class="flex-1">{{ userName(user) }}</span>
-            <USelect
-              v-if="canEdit"
-              :model-value="roleOf(meeting, user)"
-              :items="roleItems"
-              :disabled="meeting.profile.chair === user"
-              size="xs"
-              class="w-28"
-              @update:model-value="onRoleChange(user, $event)"
-            />
-            <UBadge v-else size="sm" variant="subtle" :color="meeting.profile.chair === user ? 'primary' : 'neutral'">
+            <UBadge v-if="user === meeting.profile.chair" variant="outline" color="neutral">
               {{ meeting.profile.chair === user ? '主持人' : meeting.members.includes(user) ? '成员' : '旁听成员' }}
             </UBadge>
+            <USelect
+              v-else
+              :model-value="roleOf(meeting, user)"
+              :items="roleItems"
+              size="xs"
+              class="w-auto"
+              :ui="{ content: 'w-auto' }"
+              @update:model-value="onRoleChange(user, $event)"
+            />
           </div>
         </div>
       </div>
@@ -286,6 +310,19 @@ function confirmTransfer(): void {
     <template #footer="{ close }">
       <UButton label="取消" color="neutral" variant="outline" @click="close" />
       <UButton label="确认移交" color="primary" variant="solid" @click="confirmTransfer" />
+    </template>
+  </UModal>
+
+  <UModal
+    v-model:open="removeConfirmOpen"
+    title="移除与会者"
+    :description="`确定要移除 @${userName(removeTargetId)} 吗？`"
+    :ui="{ footer: 'justify-end' }"
+    @after:leave="removeTargetId = null"
+  >
+    <template #footer="{ close }">
+      <UButton label="取消" color="neutral" variant="outline" @click="close" />
+      <UButton label="确认移除" color="error" variant="solid" @click="confirmRemove" />
     </template>
   </UModal>
 </template>

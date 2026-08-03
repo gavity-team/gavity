@@ -332,6 +332,7 @@ function applyAction(state: MeetingEngineState, userId: string, action: ClientAc
     case 'removeAgendaItem': return engine.removeAgendaItem(state, userId, action.itemId);
     case 'transferChair': return engine.transferChair(state, userId, action.targetId);
     case 'setMemberRole': return engine.setMemberRole(state, userId, action.targetId, action.role);
+    case 'removeMember': return engine.removeMember(state, userId, action.targetId);
     case 'updateMotion': return engine.updateMotion(state, userId, action.motionId, action.patch);
     case 'updateSettings': return engine.updateSettings(state, userId, action.patch);
   }

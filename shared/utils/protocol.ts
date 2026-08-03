@@ -53,6 +53,7 @@ export const ClientAction = z.discriminatedUnion('action', [
   z.object({ action: z.literal('removeAgendaItem'), itemId: z.int() }),
   z.object({ action: z.literal('transferChair'), targetId: z.string() }),
   z.object({ action: z.literal('setMemberRole'), targetId: z.string(), role: z.enum(['member', 'observer']) }),
+  z.object({ action: z.literal('removeMember'), targetId: z.string() }),
   z.object({ action: z.literal('updateMotion'), motionId: z.int(), patch: motionPatch }),
   z.object({ action: z.literal('updateSettings'), patch: z.object({ title: z.string().optional() }) }),
 ]);

@@ -57,6 +57,7 @@ const remoteDriver: MeetingDriver = {
   removeAgendaItem: (_userId, itemId) => send({ action: 'removeAgendaItem', itemId }),
   transferChair: (_userId, targetId) => send({ action: 'transferChair', targetId }),
   setMemberRole: (_userId, targetId, role) => send({ action: 'setMemberRole', targetId, role }),
+  removeMember: (_userId, targetId) => send({ action: 'removeMember', targetId }),
   updateMotion: (_userId, motionId, patch) => send({ action: 'updateMotion', motionId, patch }),
   updateSettings: (_userId, patch) => send({ action: 'updateSettings', patch }),
   resetMeeting: () => '多人会议不支持重置，请创建新会议',

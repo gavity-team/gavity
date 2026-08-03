@@ -680,6 +680,27 @@ export function setMemberRole(state: MeetingEngineState, userId: string, targetI
   return null;
 }
 
+/** 从会议中移除指定用户（非主持人）。主持人需先移交身份再被移除。 */
+export function removeMember(state: MeetingEngineState, userId: string, targetId: string): string | null {
+  const m = state.meeting;
+  if (!m.recordMode && !isChair(m, userId))
+    return '仅主持人可移除与会者';
+  if (targetId === m.profile.chair)
+    return '请先移交主持人身份';
+  const removedFromMembers = m.members.includes(targetId);
+  const removedFromObservers = m.observers.includes(targetId);
+  if (!removedFromMembers && !removedFromObservers)
+    return '该用户不在会议中';
+  m.members = m.members.filter(id => id !== targetId);
+  m.observers = m.observers.filter(id => id !== targetId);
+  m.floor = m.floor.filter(id => id !== targetId);
+  if (m.floorHolder === targetId)
+    releaseFloor(state);
+  pushLog(state, `
+@${userNameOf(state, targetId)} 被移除出会议`, { kind: 'meeting', actor: userId, icon: 'i-lucide-user-x', tone: 'warning' });
+  return null;
+}
+
 export function updateSettings(state: MeetingEngineState, userId: string, patch: { title?: string }): string | null {
   const m = state.meeting;
   if (!m.recordMode && !isChair(m, userId))

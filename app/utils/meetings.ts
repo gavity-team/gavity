@@ -124,6 +124,7 @@ export interface MeetingDriver {
   removeAgendaItem: (userId: string, itemId: number) => string | null
   transferChair: (userId: string, targetId: string) => string | null
   setMemberRole: (userId: string, targetId: string, role: 'member' | 'observer') => string | null
+  removeMember: (userId: string, targetId: string) => string | null
   updateMotion: (userId: string, motionId: number, patch: MotionPatch) => string | null
   updateSettings: (userId: string, patch: { title?: string }) => string | null
   resetMeeting: () => string | null
@@ -164,6 +165,7 @@ export const localDriver: MeetingDriver = {
   removeAgendaItem: (userId, itemId) => engine.removeAgendaItem(meetingState, userId, itemId),
   transferChair: (userId, targetId) => engine.transferChair(meetingState, userId, targetId),
   setMemberRole: (userId, targetId, role) => engine.setMemberRole(meetingState, userId, targetId, role),
+  removeMember: (userId, targetId) => engine.removeMember(meetingState, userId, targetId),
   updateMotion: (userId, motionId, patch) => engine.updateMotion(meetingState, userId, motionId, patch),
   updateSettings: (userId, patch) => engine.updateSettings(meetingState, userId, patch),
   resetMeeting: () => {
@@ -285,6 +287,10 @@ export function transferChair(targetId: string, userId = meetingState.currentUse
 
 export function setMemberRole(targetId: string, role: 'member' | 'observer', userId = meetingState.currentUserId): string | null {
   return driver.setMemberRole(userId, targetId, role);
+}
+
+export function removeMember(targetId: string, userId = meetingState.currentUserId): string | null {
+  return driver.removeMember(userId, targetId);
 }
 
 export function updateMotion(motionId: number, patch: MotionPatch, userId = meetingState.currentUserId): string | null {
