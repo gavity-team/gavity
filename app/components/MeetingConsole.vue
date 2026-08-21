@@ -19,15 +19,6 @@ watch(
   <div class="flex h-screen flex-col bg-default text-default">
     <MeetingTopBar />
 
-    <UAlert
-      v-if="meetingState.meeting.recordMode"
-      color="primary"
-      variant="soft"
-      icon="i-lucide-pencil-line"
-      title="记录模式已开启，操作限制已解除"
-      class="border-b border-default"
-    />
-
     <div class="relative flex min-h-0 flex-1">
       <LeftPanel />
       <main class="flex min-h-0 flex-1 flex-col bg-default">

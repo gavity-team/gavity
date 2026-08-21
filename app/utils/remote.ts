@@ -1,9 +1,10 @@
 import type { ClientAction, RosterEntry, ServerMessage } from '#shared/utils/protocol';
 import type { MeetingDriver } from './meetings';
 import { useToast } from '@nuxt/ui/runtime/composables/useToast.js';
-import { navigateTo } from '#app';
+import { createError, navigateTo, showError } from '#app';
 import { maxVoteId, meetingState, resetDriver, setDriver } from './meetings';
 import { notifyError, uiState } from './ui';
+import { ensureUsers } from './users';
 
 /**
  * 多人会议远程驱动：动作经同源 WebSocket 交由服务端权威执行，
@@ -13,6 +14,7 @@ import { notifyError, uiState } from './ui';
 let ws: WebSocket | null = null;
 let roomId: string | null = null;
 let kicked = false;
+let snapshotReceived = false;
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 let reconnectAttempts = 0;
 let pingTimer: ReturnType<typeof setInterval> | null = null;
@@ -66,10 +68,12 @@ const remoteDriver: MeetingDriver = {
 export function connectMeeting(id: string): void {
   roomId = id;
   kicked = false;
+  snapshotReceived = false;
   reconnectAttempts = 0;
   setDriver(remoteDriver);
   meetingState.mode = 'live';
   meetingState.connected = false;
+  meetingState.synced = false;
   meetingState.logs = [];
   meetingState.onlineIds = [];
   openSocket();
@@ -120,12 +124,18 @@ function openSocket(): void {
     }
     handleMessage(msg);
   };
-  socket.onclose = () => {
+  socket.onclose = (_ev) => {
     if (ws !== socket)
       return;
     ws = null;
     meetingState.connected = false;
     stopPing();
+    if (!snapshotReceived) {
+      roomId = null;
+      resetDriver();
+      showError(createError({ status: 404, message: '会议不存在' }));
+      return;
+    }
     if (!kicked && roomId)
       scheduleReconnect();
   };
@@ -143,7 +153,7 @@ function scheduleReconnect(): void {
 }
 
 function applyRoster(roster: RosterEntry[]): void {
-  meetingState.names = Object.fromEntries(roster.map(r => [r.id, r.name]));
+  ensureUsers(roster.map(r => r.id));
   meetingState.onlineIds = roster.filter(r => r.online).map(r => r.id);
 }
 
@@ -156,6 +166,8 @@ function trimLogs(): void {
 function handleMessage(msg: ServerMessage): void {
   switch (msg.type) {
     case 'snapshot':
+      snapshotReceived = true;
+      meetingState.synced = true;
       meetingState.meeting = msg.meeting;
       meetingState.logs = msg.logs;
       meetingState.pendingRulingMotionId = msg.pendingRulingMotionId;

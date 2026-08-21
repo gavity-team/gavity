@@ -41,7 +41,6 @@ export interface RoomPeer {
 export interface PeerIdentity {
   meetingId: number
   userId: string
-  name: string
 }
 
 type RoomEvent
@@ -153,7 +152,6 @@ async function mutate(
       logs: [],
       pendingRulingMotionId: null,
       logSeq: 0,
-      names: {},
     };
     const fromSeq = state.logSeq;
     const error = fn(state);
@@ -171,7 +169,7 @@ async function mutate(
   });
 }
 
-/** 名册 = 状态中的成员/旁听 + presence 表的在线情况。 */
+/** 名册 = 状态中的成员/旁听 + presence 表的在线情况（不含显示名）。 */
 async function loadRoster(meetingId: number, state: MeetingEngineState): Promise<RosterEntry[]> {
   const rows = await getDb().select({ userId: meetingPresence.userId, lastSeenAt: meetingPresence.lastSeenAt }).from(meetingPresence).where(eq(meetingPresence.meetingId, meetingId));
   const cutoff = Date.now() - OFFLINE_MS;
@@ -179,7 +177,6 @@ async function loadRoster(meetingId: number, state: MeetingEngineState): Promise
   const m = state.meeting;
   return [...m.members, ...m.observers].map(id => ({
     id,
-    name: state.names[id] ?? id,
     role: roleOf(m, id),
     online: online.has(id),
   }));
@@ -243,17 +240,15 @@ function kickLocal(meetingId: number, userId: string, keepConn: string): void {
 // ===== 连接生命周期 =====
 
 export async function joinRoom(peer: RoomPeer): Promise<void> {
-  const { meetingId, userId, name } = identityOf(peer);
+  const { meetingId, userId } = identityOf(peer);
   await ensureListening();
   lastPingAt.set(peer, Date.now());
-  const displayName = name || userId;
 
   const { state, fromSeq, toSeq } = await mutate(meetingId, (s) => {
-    s.names[userId] = displayName;
     const m = s.meeting;
     if (!m.members.includes(userId) && !m.observers.includes(userId)) {
       m.members.push(userId);
-      engine.pushLog(s, `@${displayName} 加入会议`, { kind: 'meeting', actor: userId, icon: 'i-lucide-log-in' });
+      engine.pushLog(s, { type: 'memberJoined' }, { kind: 'meeting', actor: userId, icon: 'i-lucide-log-in' });
     }
     return null;
   });

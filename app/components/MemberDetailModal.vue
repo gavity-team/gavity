@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { roleOf } from '#shared/utils/rules';
-import { assignFloor, meetingState, memberStats, userName } from '~/utils/meetings';
+import { assignFloor, meetingState, memberStats } from '~/utils/meetings';
 import { notifyError, uiState } from '~/utils/ui';
 
 const meeting = computed(() => meetingState.meeting);
@@ -47,31 +47,26 @@ function run(result: string | null): void {
     <template #body>
       <div v-if="userId" class="space-y-4">
         <div class="flex items-center gap-3">
-          <UAvatar :alt="userName(userId)" size="lg" />
-          <div>
-            <div class="flex items-center gap-2 font-semibold text-highlighted">
-              {{ userName(userId) }}
-              <UBadge v-if="role === 'host'" size="sm" color="primary" variant="subtle">
-                主持人
-              </UBadge>
-              <UBadge v-else-if="role === 'member'" size="sm" color="neutral" variant="subtle">
-                成员
-              </UBadge>
-              <UBadge v-else size="sm" color="warning" variant="subtle">
-                旁听成员
-              </UBadge>
-            </div>
-            <div class="mt-0.5 flex items-center gap-1 text-xs text-muted">
-              <template v-if="hasFloor">
-                <UIcon name="i-lucide-mic" class="size-3.5 text-primary" />正在发言
-              </template>
-              <template v-else-if="meeting.floor.includes(userId)">
-                <UIcon name="i-lucide-hand" class="size-3.5 text-warning" />正在抢夺发言权
-              </template>
-              <template v-else>
-                <span class="inline-block size-1.5 rounded-full bg-success" />在线
-              </template>
-            </div>
+          <InlineUser :user-id="userId" variant="neutral" size="lg" />
+          <UBadge v-if="role === 'host'" size="sm" color="primary" variant="subtle">
+            主持人
+          </UBadge>
+          <UBadge v-else-if="role === 'member'" size="sm" color="neutral" variant="subtle">
+            成员
+          </UBadge>
+          <UBadge v-else size="sm" color="warning" variant="subtle">
+            旁听成员
+          </UBadge>
+          <div class="flex items-center gap-1 text-sm text-muted">
+            <template v-if="hasFloor">
+              <UIcon name="i-lucide-mic" class="size-3.5 text-primary" />正在发言
+            </template>
+            <template v-else-if="meeting.floor.includes(userId)">
+              <UIcon name="i-lucide-hand" class="size-3.5 text-warning" />正在抢夺发言权
+            </template>
+            <template v-else>
+              <span class="inline-block size-1.5 rounded-full bg-success" />在线
+            </template>
           </div>
         </div>
 

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { motionMeta } from '#shared/utils/rules';
-import { meetingState, resolveRuling, userName } from '~/utils/meetings';
+import { meetingState, resolveRuling } from '~/utils/meetings';
 
 const meeting = computed(() => meetingState.meeting);
 
@@ -28,7 +28,7 @@ function rule(uphold: boolean): void {
           <UBadge color="secondary" variant="subtle">
             {{ motionMeta(motion.type).label }}
           </UBadge>
-          <span class="text-xs text-muted">@{{ userName(motion.proposer) }} 提出</span>
+          <span class="text-xs text-muted"><InlineUser :user-id="motion.proposer" /> 提出</span>
         </div>
         <p class="rounded-none bg-muted px-3 py-2 text-sm text-default">
           {{ motion.content }}

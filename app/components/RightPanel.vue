@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { computed, nextTick, onUnmounted, ref, useTemplateRef, watch } from 'vue';
+import { formatLogSegments, logUserRefs } from '#shared/utils/meeting-engine';
 import { AgendaItemStatusMap, MeetingStatusMap } from '#shared/utils/mettings';
 import { canGrabFloor, canSwitchAgenda, roleOf } from '#shared/utils/rules';
 import { endFloor, formatTime, grabFloor, meetingState, switchAgenda } from '~/utils/meetings';
 import { notifyError, uiState } from '~/utils/ui';
+import { ensureUsers } from '~/utils/users';
 
 const meeting = computed(() => meetingState.meeting);
 const selfId = computed(() => meetingState.currentUserId);
@@ -96,6 +98,20 @@ function onSwitch(itemId: number): void {
 
 const logListRef = useTemplateRef('logList');
 
+/** 结构化日志的渲染段（用户引用以 InlineUser 胶囊内嵌）。 */
+const logLines = computed(() => meetingState.logs.map(l => ({
+  id: l.id,
+  icon: l.icon,
+  at: l.at,
+  segments: formatLogSegments(l),
+})));
+
+watch(
+  () => meetingState.logs.length,
+  () => ensureUsers(meetingState.logs.flatMap(logUserRefs)),
+  { immediate: true },
+);
+
 watch(
   () => meetingState.logs.length,
   async () => {
@@ -117,14 +133,15 @@ watch(
         议程
       </div>
       <div class="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
-        <button
+        <UButton
           v-for="item in meeting.agenda"
           :key="item.id"
-          type="button"
+          color="neutral"
+          variant="ghost"
           :disabled="!canSwitchInfo.ok"
           :title="canSwitchInfo.reason"
-          class="flex w-full items-center gap-2.5 rounded-none px-2.5 py-2 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-60"
-          :class="item.id === meeting.currentAgendaId ? 'bg-accented' : 'hover:bg-elevated'"
+          class="w-full gap-2.5 rounded-none px-2.5 py-2 text-left"
+          :class="item.id === meeting.currentAgendaId ? 'bg-accented hover:bg-accented' : ''"
           @click="onSwitch(item.id)"
         >
           <UIcon :name="itemStatusMeta[item.status]?.icon ?? 'i-lucide-circle'" class="size-4 shrink-0" :class="itemStatusMeta[item.status]?.class" />
@@ -138,7 +155,7 @@ watch(
             </div>
           </div>
           <span class="text-xs text-dimmed">{{ itemStatusMeta[item.status].label }}</span>
-        </button>
+        </UButton>
       </div>
     </div>
 
@@ -153,14 +170,19 @@ watch(
           暂无日志
         </div>
         <div
-          v-for="entry in meetingState.logs"
-          :key="entry.id"
+          v-for="line in logLines"
+          :key="line.id"
           class="flex items-start gap-1.5 text-xs leading-relaxed"
         >
-          <UIcon :name="entry.icon" class="mt-0.5 size-3.5 shrink-0 text-dimmed" />
+          <UIcon :name="line.icon" class="mt-0.5 size-3.5 shrink-0 text-dimmed" />
           <div class="min-w-0 flex-1">
-            <span class="text-dimmed">{{ formatTime(entry.at) }}</span>
-            <span class="ml-1 text-dimmed">{{ entry.text }}</span>
+            <span class="text-dimmed">{{ formatTime(line.at) }}</span>
+            <span class="ml-1 text-dimmed">
+              <template v-for="(seg, j) in line.segments" :key="j">
+                <InlineUser v-if="typeof seg !== 'string'" :user-id="seg.userId" />
+                <template v-else>{{ seg }}</template>
+              </template>
+            </span>
           </div>
         </div>
       </div>

@@ -5,7 +5,7 @@ import { useToast } from '@nuxt/ui/runtime/composables/useToast.js';
 import { computed, reactive, ref, watch } from 'vue';
 import { AgendaItemStatusMap } from '#shared/utils/mettings';
 import { roleOf } from '#shared/utils/rules';
-import { addAgendaItem, meetingState, moveAgendaItem, removeAgendaItem, removeMember, setMemberRole, transferChair, updateAgendaItem, updateSettings, userName } from '~/utils/meetings';
+import { addAgendaItem, meetingState, moveAgendaItem, removeAgendaItem, removeMember, setMemberRole, transferChair, updateAgendaItem, updateSettings } from '~/utils/meetings';
 import { uiState } from '~/utils/ui';
 
 const toast = useToast();
@@ -276,8 +276,7 @@ function confirmTransfer(): void {
             :key="user"
             class="flex items-center gap-2 rounded-none bg-muted px-3 py-1.5 text-sm"
           >
-            <UAvatar :alt="userName(user)" size="2xs" />
-            <span class="flex-1">{{ userName(user) }}</span>
+            <InlineUser class="flex-1" :user-id="user" />
             <UBadge v-if="user === meeting.profile.chair" variant="outline" color="neutral">
               {{ meeting.profile.chair === user ? '主持人' : meeting.members.includes(user) ? '成员' : '旁听成员' }}
             </UBadge>
@@ -303,10 +302,12 @@ function confirmTransfer(): void {
   <UModal
     v-model:open="transferConfirmOpen"
     title="移交主持人"
-    :description="`将主持人身份移交给 ${userName(transferTargetId)}，你将成为普通成员。是否确认？`"
     :ui="{ footer: 'justify-end' }"
     @after:leave="transferTargetId = null"
   >
+    <template #description>
+      将主持人身份移交给 <InlineUser :user-id="transferTargetId" />，你将成为普通成员。是否确认？
+    </template>
     <template #footer="{ close }">
       <UButton label="取消" color="neutral" variant="outline" @click="close" />
       <UButton label="确认移交" color="primary" variant="solid" @click="confirmTransfer" />
@@ -316,10 +317,12 @@ function confirmTransfer(): void {
   <UModal
     v-model:open="removeConfirmOpen"
     title="移除与会者"
-    :description="`确定要移除 @${userName(removeTargetId)} 吗？`"
     :ui="{ footer: 'justify-end' }"
     @after:leave="removeTargetId = null"
   >
+    <template #description>
+      确定要移除 <InlineUser :user-id="removeTargetId" /> 吗？
+    </template>
     <template #footer="{ close }">
       <UButton label="取消" color="neutral" variant="outline" @click="close" />
       <UButton label="确认移除" color="error" variant="solid" @click="confirmRemove" />

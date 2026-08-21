@@ -59,10 +59,9 @@ export const ClientAction = z.discriminatedUnion('action', [
 ]);
 export type ClientAction = z.infer<typeof ClientAction>;
 
-/** 与会者名册条目（含在线状态）。 */
+/** 与会者名册条目（仅 id/角色/在线状态，显示名与头像由前端按需查询）。 */
 export interface RosterEntry {
   id: string
-  name: string
   role: 'host' | 'member' | 'observer'
   online: boolean
 }

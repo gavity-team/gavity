@@ -1,44 +1,6 @@
-import type {
-  AgendaItem,
-  AgendaItemStatus,
-  Ballot,
-  Meeting,
-  Motion,
-  MotionStatus,
-  MotionType,
-  VoteMethod,
-  VoteResult,
-  VoteTreshold,
-} from './mettings';
-import {
-  AgendaItemStatusMap,
-  BallotMap,
-  MeetingStatusMap,
-  MotionStatusMap,
-  MotionTypeMap,
-  VoteMethodMap,
-  VoteTresholdMap,
-} from './mettings';
-import {
-  canAssignFloor,
-  canCastBallot,
-  canEndFloor,
-  canEndMeeting,
-  canGrabFloor,
-  canOpenVote,
-  canProposeMotion,
-  canResumeMeeting,
-  canSecondMotion,
-  canStartMeeting,
-  canSwitchAgenda,
-  canToggleRecordMode,
-  isChair,
-  isMember,
-  laidAsideMotions,
-  motionMeta,
-  topMotion,
-  VOTE_METHOD_LABELS,
-} from './rules';
+import type { AgendaItem, AgendaItemStatus, Ballot, Meeting, Motion, MotionStatus, MotionType, VoteMethod, VoteResult, VoteTreshold } from './mettings';
+import { AgendaItemStatusMap, BallotMap, MeetingStatusMap, MotionStatusMap, MotionTypeMap, VoteMethodMap, VoteTresholdMap } from './mettings';
+import { canAssignFloor, canCastBallot, canEndFloor, canEndMeeting, canGrabFloor, canOpenVote, canProposeMotion, canResumeMeeting, canSecondMotion, canStartMeeting, canSwitchAgenda, canToggleRecordMode, isChair, isMember, laidAsideMotions, motionMeta, topMotion, VOTE_METHOD_LABELS } from './rules';
 
 export type LogKind = 'system' | 'meeting' | 'floor' | 'motion' | 'second' | 'vote' | 'ballot' | 'agenda' | 'ruling';
 export type LogTone = 'info' | 'success' | 'warning' | 'error';
@@ -49,9 +11,48 @@ export interface LogEntry {
   at: number
   actor: string | null
   icon: string
-  text: string
   tone: LogTone
+  /** 结构化内容：引擎只记录事实，展示文本由客户端用 formatLog 格式化。 */
+  payload: LogPayload
 }
+
+/** 结构化日志内容（不含显示名，客户端格式化时自行解析用户名）。 */
+export type LogPayload
+  = | { type: 'meetingStart' }
+    | { type: 'meetingEnd', adjourned: boolean }
+    | { type: 'meetingResume' }
+    | { type: 'recordMode', enabled: boolean }
+    | { type: 'floorGranted' }
+    | { type: 'floorEnded' }
+    | { type: 'floorOpenSoon' }
+    | { type: 'floorAssigned' }
+    | { type: 'motionProposed', motionId: number, motionType: MotionType, content: string, viaNoFloor: boolean }
+    | { type: 'ruling', motionId: number, motionType: MotionType, upheld: boolean }
+    | { type: 'motionSeconded', motionId: number }
+    | { type: 'motionPending', motionId: number }
+    | { type: 'motionUpdated', motionId: number }
+    | { type: 'voteOpened', motionId: number, method: VoteMethod }
+    | { type: 'voteDeclared', voteId: number, motionId: number, method: VoteMethod, passed: boolean }
+    | { type: 'voteClosed', voteId: number, passed: boolean, yea: number, nay: number, abstain: number }
+    | { type: 'mainMotionRejected' }
+    | { type: 'motionLaidAside', motionId: number }
+    | { type: 'motionDeferred', motionId: number, referred: boolean }
+    | { type: 'motionDropped', motionId: number }
+    | { type: 'amendmentApplied', motionId: number }
+    | { type: 'previousQuestion' }
+    | { type: 'motionRestored', motionId: number }
+    | { type: 'recess' }
+    | { type: 'motionPassed', motionType: MotionType }
+    | { type: 'agendaSwitched', title: string }
+    | { type: 'agendaAdded', title: string }
+    | { type: 'agendaUpdated', title: string }
+    | { type: 'agendaMoved', title: string }
+    | { type: 'agendaRemoved', title: string }
+    | { type: 'chairTransferred' }
+    | { type: 'memberRoleChanged', userId: string, role: 'member' | 'observer' }
+    | { type: 'memberRemoved', userId: string }
+    | { type: 'settingsUpdated' }
+    | { type: 'memberJoined' };
 
 /**
  * 会议引擎状态：客户端 demo 驱动与服务端会议房间共用同一状态形状，
@@ -64,8 +65,6 @@ export interface MeetingEngineState {
   pendingRulingMotionId: number | null
   /** 日志自增序号。 */
   logSeq: number
-  /** userId -> 显示名，用于日志文案。 */
-  names: Record<string, string>
 }
 
 /** 创建一场空会议（实时会议以此初始化，demo 使用自己的预置数据）。 */
@@ -91,21 +90,15 @@ export function createEmptyMeeting(id: number, title: string, chair: string): Me
   };
 }
 
-export function userNameOf(state: MeetingEngineState, id: string | null | undefined): string {
-  if (!id)
-    return '系统';
-  return state.names[id] ?? id;
-}
-
-export function pushLog(state: MeetingEngineState, text: string, opts: { kind?: LogKind, actor?: string | null, icon?: string, tone?: LogTone } = {}): void {
+export function pushLog(state: MeetingEngineState, payload: LogPayload, opts: { kind?: LogKind, actor?: string | null, icon?: string, tone?: LogTone } = {}): void {
   state.logs.push({
     id: ++state.logSeq,
     kind: opts.kind ?? 'system',
     at: Date.now(),
     actor: opts.actor ?? null,
     icon: opts.icon ?? 'i-lucide-info',
-    text,
     tone: opts.tone ?? 'info',
+    payload,
   });
   if (state.logs.length > 200)
     state.logs.splice(0, state.logs.length - 200);
@@ -137,7 +130,7 @@ export function startMeeting(state: MeetingEngineState, userId: string): string 
     return check.reason!;
   m.status = MeetingStatusMap.IN_PROGRESS;
   m.startedAt = Date.now();
-  pushLog(state, `@${userNameOf(state, userId)} 宣布会议开始`, { kind: 'meeting', actor: userId, icon: 'i-lucide-play', tone: 'success' });
+  pushLog(state, { type: 'meetingStart' }, { kind: 'meeting', actor: userId, icon: 'i-lucide-play', tone: 'success' });
   return null;
 }
 
@@ -163,7 +156,7 @@ function doEndMeeting(state: MeetingEngineState, userId: string | null): void {
       motion.status = MotionStatusMap.DISPOSED;
     }
   }
-  pushLog(state, userId ? `@${userNameOf(state, userId)} 宣布会议结束` : '休会动议通过，会议结束', {
+  pushLog(state, { type: 'meetingEnd', adjourned: userId === null }, {
     kind: 'meeting',
     actor: userId,
     icon: 'i-lucide-square',
@@ -177,7 +170,7 @@ export function resumeMeeting(state: MeetingEngineState, userId: string): string
   if (!check.ok)
     return check.reason!;
   m.status = MeetingStatusMap.IN_PROGRESS;
-  pushLog(state, `@${userNameOf(state, userId)} 宣布恢复会议`, { kind: 'meeting', actor: userId, icon: 'i-lucide-play', tone: 'success' });
+  pushLog(state, { type: 'meetingResume' }, { kind: 'meeting', actor: userId, icon: 'i-lucide-play', tone: 'success' });
   return null;
 }
 
@@ -187,7 +180,7 @@ export function toggleRecordMode(state: MeetingEngineState, userId: string): str
   if (!check.ok)
     return check.reason!;
   m.recordMode = !m.recordMode;
-  pushLog(state, m.recordMode ? '记录模式已开启，操作限制解除' : '记录模式已关闭', {
+  pushLog(state, { type: 'recordMode', enabled: m.recordMode }, {
     kind: 'meeting',
     actor: userId,
     icon: 'i-lucide-pencil-line',
@@ -206,7 +199,7 @@ export function grabFloor(state: MeetingEngineState, userId: string): string | n
   m.floorHolder = userId;
   m.floorGrabAt = null;
   m.floor = [];
-  pushLog(state, `@${userNameOf(state, userId)} 获得发言权`, { kind: 'floor', actor: userId, icon: 'i-lucide-mic', tone: 'success' });
+  pushLog(state, { type: 'floorGranted' }, { kind: 'floor', actor: userId, icon: 'i-lucide-mic', tone: 'success' });
   return null;
 }
 
@@ -224,11 +217,11 @@ function releaseFloor(state: MeetingEngineState): void {
   const m = state.meeting;
   const holder = m.floorHolder;
   if (holder)
-    pushLog(state, `@${userNameOf(state, holder)} 结束发言`, { kind: 'floor', actor: holder, icon: 'i-lucide-mic-off' });
+    pushLog(state, { type: 'floorEnded' }, { kind: 'floor', actor: holder, icon: 'i-lucide-mic-off' });
   m.floorHolder = null;
   m.floor = [];
   m.floorGrabAt = Date.now() + 3000;
-  pushLog(state, '发言权将在 3 秒后开放请求', { kind: 'floor', icon: 'i-lucide-timer' });
+  pushLog(state, { type: 'floorOpenSoon' }, { kind: 'floor', icon: 'i-lucide-timer' });
 }
 
 export function assignFloor(state: MeetingEngineState, userId: string, targetId: string): string | null {
@@ -241,7 +234,7 @@ export function assignFloor(state: MeetingEngineState, userId: string, targetId:
   m.floor = [];
   m.floorGrabAt = null;
   m.floorHolder = targetId;
-  pushLog(state, `主持人将发言权分配给 @${userNameOf(state, targetId)}`, { kind: 'floor', actor: targetId, icon: 'i-lucide-mic', tone: 'success' });
+  pushLog(state, { type: 'floorAssigned' }, { kind: 'floor', actor: targetId, icon: 'i-lucide-mic', tone: 'success' });
   return null;
 }
 
@@ -283,7 +276,7 @@ export function proposeMotion(state: MeetingEngineState, userId: string, input: 
   const viaNoFloor = !meta.needsFloor && m.floorHolder !== userId;
   pushLog(
     state,
-    `@${userNameOf(state, userId)} 提出动议 #M${motion.id}【${meta.label}】${motion.content}${viaNoFloor ? '，获得临时发言权' : ''}`,
+    { type: 'motionProposed', motionId: motion.id, motionType: input.type, content: motion.content, viaNoFloor },
     { kind: 'motion', actor: userId, icon: 'i-lucide-file-plus-2' },
   );
   if (meta.chairRules) {
@@ -306,7 +299,7 @@ export function resolveRuling(state: MeetingEngineState, userId: string, uphold:
   motion.status = MotionStatusMap.DISPOSED;
   pushLog(
     state,
-    `主持人裁决：#M${motion.id}【${motionMeta(motion.type).label}】${uphold ? '成立' : '不成立'}`,
+    { type: 'ruling', motionId: motion.id, motionType: motion.type, upheld: uphold },
     { kind: 'ruling', actor: userId, icon: 'i-lucide-gavel', tone: uphold ? 'warning' : 'info' },
   );
   return null;
@@ -321,10 +314,10 @@ export function secondMotion(state: MeetingEngineState, userId: string, motionId
   if (!check.ok)
     return check.reason!;
   motion.seconders.push(userId);
-  pushLog(state, `@${userNameOf(state, userId)} 附议了动议 #M${motionId}`, { kind: 'second', actor: userId, icon: 'i-lucide-thumbs-up' });
+  pushLog(state, { type: 'motionSeconded', motionId }, { kind: 'second', actor: userId, icon: 'i-lucide-thumbs-up' });
   if (motion.seconders.length >= 1) {
     motion.status = MotionStatusMap.PENDING;
-    pushLog(state, `动议 #M${motionId} 已获附议，进入辩论阶段`, { kind: 'motion', icon: 'i-lucide-message-square', tone: 'success' });
+    pushLog(state, { type: 'motionPending', motionId }, { kind: 'motion', icon: 'i-lucide-message-square', tone: 'success' });
   }
   return null;
 }
@@ -362,7 +355,7 @@ export function updateMotion(state: MeetingEngineState, userId: string, motionId
     if (state.pendingRulingMotionId === motionId)
       state.pendingRulingMotionId = null;
   }
-  pushLog(state, `主持人修改了动议 #M${motionId}`, { kind: 'motion', actor: userId, icon: 'i-lucide-pencil' });
+  pushLog(state, { type: 'motionUpdated', motionId }, { kind: 'motion', actor: userId, icon: 'i-lucide-pencil' });
   return null;
 }
 
@@ -390,7 +383,7 @@ export function openVote(state: MeetingEngineState, userId: string, motionId: nu
     ballots: {},
     startedAt: now,
   };
-  pushLog(state, `主持人对动议 #M${motionId} 发起${VOTE_METHOD_LABELS[method]}`, { kind: 'vote', actor: userId, icon: 'i-lucide-vote', tone: 'warning' });
+  pushLog(state, { type: 'voteOpened', motionId, method }, { kind: 'vote', actor: userId, icon: 'i-lucide-vote', tone: 'warning' });
   return null;
 }
 
@@ -416,7 +409,7 @@ export function declareVote(state: MeetingEngineState, userId: string, motionId:
   applyMotionEffects(state, motion, result.passed);
   pushLog(
     state,
-    `#V${result.id} ${VOTE_METHOD_LABELS[method]}：动议 #M${motionId} ${result.passed ? '通过' : '否决'}`,
+    { type: 'voteDeclared', voteId: result.id, motionId, method, passed: result.passed },
     { kind: 'vote', actor: userId, icon: result.passed ? 'i-lucide-check-circle-2' : 'i-lucide-x-circle', tone: result.passed ? 'success' : 'error' },
   );
   return null;
@@ -468,7 +461,7 @@ export function closeVote(state: MeetingEngineState, userId?: string): string | 
   }
   pushLog(
     state,
-    `#V${result.id} 投票结果：${passed ? '通过' : '否决'}（赞成 ${yea.length} / 反对 ${nay.length} / 弃权 ${abstain.length}）`,
+    { type: 'voteClosed', voteId: vote.id, passed, yea: yea.length, nay: nay.length, abstain: abstain.length },
     { kind: 'vote', icon: passed ? 'i-lucide-check-circle-2' : 'i-lucide-x-circle', tone: passed ? 'success' : 'error' },
   );
   return null;
@@ -489,47 +482,46 @@ function isPassed(threshold: VoteTreshold, yea: number, nay: number): boolean {
 function applyMotionEffects(state: MeetingEngineState, motion: Motion, passed: boolean): void {
   const m = state.meeting;
   const target = topMotion(m); // 栈中的下一项动议（本动议已出栈）
-  const label = motionMeta(motion.type).label;
   if (!passed) {
     if (motion.type === MotionTypeMap.MAIN)
-      pushLog(state, `主动议被否决，议题继续讨论`, { kind: 'motion', icon: 'i-lucide-x' });
+      pushLog(state, { type: 'mainMotionRejected' }, { kind: 'motion', icon: 'i-lucide-x' });
     return;
   }
   switch (motion.type) {
     case MotionTypeMap.LAY_ON_TABLE:
       if (target) {
         target.status = MotionStatusMap.LAID_ASIDE;
-        pushLog(state, `动议 #M${target.id} 被搁置`, { kind: 'motion', icon: 'i-lucide-pause', tone: 'warning' });
+        pushLog(state, { type: 'motionLaidAside', motionId: target.id }, { kind: 'motion', icon: 'i-lucide-pause', tone: 'warning' });
       }
       break;
     case MotionTypeMap.POSTPONE_TO_TIME:
     case MotionTypeMap.REFER_TO_COMMITTEE:
       if (target) {
         target.status = MotionStatusMap.LAID_ASIDE;
-        pushLog(state, `动议 #M${target.id} ${motion.type === MotionTypeMap.REFER_TO_COMMITTEE ? '已委托给委员会' : '已推迟'}，暂时移出审议`, { kind: 'motion', icon: 'i-lucide-pause', tone: 'warning' });
+        pushLog(state, { type: 'motionDeferred', motionId: target.id, referred: motion.type === MotionTypeMap.REFER_TO_COMMITTEE }, { kind: 'motion', icon: 'i-lucide-pause', tone: 'warning' });
       }
       break;
     case MotionTypeMap.POSTPONE_INDEFINITELY:
       if (target) {
         target.status = MotionStatusMap.DISPOSED;
-        pushLog(state, `动议 #M${target.id} 被无限期推迟（视同否决）`, { kind: 'motion', icon: 'i-lucide-x', tone: 'error' });
+        pushLog(state, { type: 'motionDropped', motionId: target.id }, { kind: 'motion', icon: 'i-lucide-x', tone: 'error' });
       }
       break;
     case MotionTypeMap.AMEND:
       if (target) {
         target.content = `${target.content}（修正：${motion.content}）`;
-        pushLog(state, `修正案通过，动议 #M${target.id} 内容已更新`, { kind: 'motion', icon: 'i-lucide-pencil', tone: 'success' });
+        pushLog(state, { type: 'amendmentApplied', motionId: target.id }, { kind: 'motion', icon: 'i-lucide-pencil', tone: 'success' });
       }
       break;
     case MotionTypeMap.PREVIOUS_QUESTION:
-      pushLog(state, '辩论已截止，请主持人对下一项动议发起表决', { kind: 'motion', icon: 'i-lucide-mic-off', tone: 'warning' });
+      pushLog(state, { type: 'previousQuestion' }, { kind: 'motion', icon: 'i-lucide-mic-off', tone: 'warning' });
       break;
     case MotionTypeMap.TAKE_FROM_TABLE: {
       const laidAside = laidAsideMotions(m);
       const restored = laidAside[laidAside.length - 1];
       if (restored) {
         restored.status = MotionStatusMap.PENDING;
-        pushLog(state, `动议 #M${restored.id} 恢复审议`, { kind: 'motion', icon: 'i-lucide-undo-2', tone: 'success' });
+        pushLog(state, { type: 'motionRestored', motionId: restored.id }, { kind: 'motion', icon: 'i-lucide-undo-2', tone: 'success' });
       }
       break;
     }
@@ -540,10 +532,10 @@ function applyMotionEffects(state: MeetingEngineState, motion: Motion, passed: b
       m.status = MeetingStatusMap.RECESSED;
       m.floor = [];
       m.floorHolder = null;
-      pushLog(state, '休息动议通过，会议进入休会状态', { kind: 'meeting', icon: 'i-lucide-coffee', tone: 'warning' });
+      pushLog(state, { type: 'recess' }, { kind: 'meeting', icon: 'i-lucide-coffee', tone: 'warning' });
       break;
     default:
-      pushLog(state, `【${label}】动议通过`, { kind: 'motion', icon: 'i-lucide-check', tone: 'success' });
+      pushLog(state, { type: 'motionPassed', motionType: motion.type }, { kind: 'motion', icon: 'i-lucide-check', tone: 'success' });
   }
 }
 
@@ -558,7 +550,7 @@ export function switchAgenda(state: MeetingEngineState, userId: string, itemId: 
   if (!item)
     return '议题不存在';
   m.currentAgendaId = itemId;
-  pushLog(state, `会议切换到议题「${item.title}」`, { kind: 'agenda', actor: userId, icon: 'i-lucide-list-video' });
+  pushLog(state, { type: 'agendaSwitched', title: item.title }, { kind: 'agenda', actor: userId, icon: 'i-lucide-list-video' });
   return null;
 }
 
@@ -583,7 +575,7 @@ export function addAgendaItem(state: MeetingEngineState, userId: string, title: 
     isSpecial: false,
   };
   m.agenda.push(item);
-  pushLog(state, `主持人新增议题「${item.title}」`, { kind: 'agenda', actor: userId, icon: 'i-lucide-list-plus' });
+  pushLog(state, { type: 'agendaAdded', title: item.title }, { kind: 'agenda', actor: userId, icon: 'i-lucide-list-plus' });
   return null;
 }
 
@@ -604,7 +596,7 @@ export function updateAgendaItem(state: MeetingEngineState, userId: string, item
     item.isSpecial = patch.isSpecial;
   if (patch.status !== undefined)
     item.status = patch.status;
-  pushLog(state, `主持人编辑议题「${item.title}」`, { kind: 'agenda', actor: userId, icon: 'i-lucide-pencil' });
+  pushLog(state, { type: 'agendaUpdated', title: item.title }, { kind: 'agenda', actor: userId, icon: 'i-lucide-pencil' });
   return null;
 }
 
@@ -621,7 +613,7 @@ export function moveAgendaItem(state: MeetingEngineState, userId: string, itemId
   const temp = m.agenda[index]!;
   m.agenda[index] = m.agenda[target]!;
   m.agenda[target] = temp;
-  pushLog(state, `主持人调整议题「${temp.title}」顺序`, { kind: 'agenda', actor: userId, icon: 'i-lucide-arrow-up-down' });
+  pushLog(state, { type: 'agendaMoved', title: temp.title }, { kind: 'agenda', actor: userId, icon: 'i-lucide-arrow-up-down' });
   return null;
 }
 
@@ -636,7 +628,7 @@ export function removeAgendaItem(state: MeetingEngineState, userId: string, item
   if (m.currentAgendaId === itemId) {
     m.currentAgendaId = m.agenda[0]?.id ?? null;
   }
-  pushLog(state, `主持人移除议题「${item!.title}」`, { kind: 'agenda', actor: userId, icon: 'i-lucide-list-x', tone: 'warning' });
+  pushLog(state, { type: 'agendaRemoved', title: item!.title }, { kind: 'agenda', actor: userId, icon: 'i-lucide-list-x', tone: 'warning' });
   return null;
 }
 
@@ -649,7 +641,7 @@ export function transferChair(state: MeetingEngineState, userId: string, targetI
   if (!isMember(m, targetId))
     return '只能移交给会议成员';
   m.profile.chair = targetId;
-  pushLog(state, `主持人身份移交给 @${userNameOf(state, targetId)}`, { kind: 'meeting', actor: userId, icon: 'i-lucide-crown', tone: 'warning' });
+  pushLog(state, { type: 'chairTransferred' }, { kind: 'meeting', actor: targetId, icon: 'i-lucide-crown', tone: 'warning' });
   return null;
 }
 
@@ -676,7 +668,7 @@ export function setMemberRole(state: MeetingEngineState, userId: string, targetI
     if (m.floorHolder === targetId)
       releaseFloor(state);
   }
-  pushLog(state, `@${userNameOf(state, targetId)} 的身份变更为${role === 'member' ? '成员' : '旁听成员'}`, { kind: 'meeting', actor: userId, icon: 'i-lucide-user-cog' });
+  pushLog(state, { type: 'memberRoleChanged', userId: targetId, role }, { kind: 'meeting', actor: userId, icon: 'i-lucide-user-cog' });
   return null;
 }
 
@@ -696,8 +688,7 @@ export function removeMember(state: MeetingEngineState, userId: string, targetId
   m.floor = m.floor.filter(id => id !== targetId);
   if (m.floorHolder === targetId)
     releaseFloor(state);
-  pushLog(state, `
-@${userNameOf(state, targetId)} 被移除出会议`, { kind: 'meeting', actor: userId, icon: 'i-lucide-user-x', tone: 'warning' });
+  pushLog(state, { type: 'memberRemoved', userId: targetId }, { kind: 'meeting', actor: userId, icon: 'i-lucide-user-x', tone: 'warning' });
   return null;
 }
 
@@ -707,7 +698,7 @@ export function updateSettings(state: MeetingEngineState, userId: string, patch:
     return '仅主持人可修改会议设置';
   if (patch.title?.trim())
     m.profile.title = patch.title.trim();
-  pushLog(state, '会议设置已更新', { kind: 'meeting', actor: userId, icon: 'i-lucide-settings' });
+  pushLog(state, { type: 'settingsUpdated' }, { kind: 'meeting', actor: userId, icon: 'i-lucide-settings' });
   return null;
 }
 
@@ -728,4 +719,97 @@ export function memberStats(state: MeetingEngineState, userId: string): MemberSt
     secondCount: state.logs.filter(l => l.kind === 'second' && l.actor === userId).length,
     voteCount: m.votes.filter(v => v.method === VoteMethodMap.SIGNED_BALLOT && [...v.yea, ...v.nay, ...v.abstain].includes(userId)).length,
   };
+}
+
+// ===== 日志展示（客户端格式化） =====
+
+/** 结构化日志的渲染段：纯文本或用户令牌（客户端用 InlineUser 胶囊渲染）。 */
+export type LogSegment = string | { userId: string };
+
+function userSeg(id: string | null): LogSegment[] {
+  return id ? [{ userId: id }] : [];
+}
+
+/** 将结构化日志格式化为渲染段，用户引用保留为令牌由客户端解析显示名。 */
+export function formatLogSegments(entry: LogEntry): LogSegment[] {
+  const p = entry.payload;
+  switch (p.type) {
+    case 'meetingStart':
+      return [...userSeg(entry.actor), ' 宣布会议开始'];
+    case 'meetingEnd':
+      return p.adjourned ? ['休会动议通过，会议结束'] : [...userSeg(entry.actor), ' 宣布会议结束'];
+    case 'meetingResume':
+      return [...userSeg(entry.actor), ' 宣布恢复会议'];
+    case 'recordMode':
+      return [p.enabled ? '记录模式已开启，操作限制解除' : '记录模式已关闭'];
+    case 'floorGranted':
+      return [...userSeg(entry.actor), ' 获得发言权'];
+    case 'floorEnded':
+      return [...userSeg(entry.actor), ' 结束发言'];
+    case 'floorOpenSoon':
+      return ['发言权将在 3 秒后开放请求'];
+    case 'floorAssigned':
+      return ['主持人将发言权分配给 ', ...userSeg(entry.actor)];
+    case 'motionProposed':
+      return [...userSeg(entry.actor), ` 提出动议 #M${p.motionId}【${motionMeta(p.motionType).label}】${p.content}${p.viaNoFloor ? '，获得临时发言权' : ''}`];
+    case 'ruling':
+      return [`主持人裁决：#M${p.motionId}【${motionMeta(p.motionType).label}】${p.upheld ? '成立' : '不成立'}`];
+    case 'motionSeconded':
+      return [...userSeg(entry.actor), ` 附议了动议 #M${p.motionId}`];
+    case 'motionPending':
+      return [`动议 #M${p.motionId} 已获附议，进入辩论阶段`];
+    case 'motionUpdated':
+      return [`主持人修改了动议 #M${p.motionId}`];
+    case 'voteOpened':
+      return [`主持人对动议 #M${p.motionId} 发起${VOTE_METHOD_LABELS[p.method]}`];
+    case 'voteDeclared':
+      return [`#V${p.voteId} ${VOTE_METHOD_LABELS[p.method]}：动议 #M${p.motionId} ${p.passed ? '通过' : '否决'}`];
+    case 'voteClosed':
+      return [`#V${p.voteId} 投票结果：${p.passed ? '通过' : '否决'}（赞成 ${p.yea} / 反对 ${p.nay} / 弃权 ${p.abstain}）`];
+    case 'mainMotionRejected':
+      return ['主动议被否决，议题继续讨论'];
+    case 'motionLaidAside':
+      return [`动议 #M${p.motionId} 被搁置`];
+    case 'motionDeferred':
+      return [`动议 #M${p.motionId} ${p.referred ? '已委托给委员会' : '已推迟'}，暂时移出审议`];
+    case 'motionDropped':
+      return [`动议 #M${p.motionId} 被无限期推迟（视同否决）`];
+    case 'amendmentApplied':
+      return [`修正案通过，动议 #M${p.motionId} 内容已更新`];
+    case 'previousQuestion':
+      return ['辩论已截止，请主持人对下一项动议发起表决'];
+    case 'motionRestored':
+      return [`动议 #M${p.motionId} 恢复审议`];
+    case 'recess':
+      return ['休息动议通过，会议进入休会状态'];
+    case 'motionPassed':
+      return [`【${motionMeta(p.motionType).label}】动议通过`];
+    case 'agendaSwitched':
+      return [`会议切换到议题「${p.title}」`];
+    case 'agendaAdded':
+      return [`主持人新增议题「${p.title}」`];
+    case 'agendaUpdated':
+      return [`主持人编辑议题「${p.title}」`];
+    case 'agendaMoved':
+      return [`主持人调整议题「${p.title}」顺序`];
+    case 'agendaRemoved':
+      return [`主持人移除议题「${p.title}」`];
+    case 'chairTransferred':
+      return ['主持人身份移交给 ', ...userSeg(entry.actor)];
+    case 'memberRoleChanged':
+      return [...userSeg(p.userId), ` 的身份变更为${p.role === 'member' ? '成员' : '旁听成员'}`];
+    case 'memberRemoved':
+      return [...userSeg(p.userId), ' 被移除出会议'];
+    case 'settingsUpdated':
+      return ['会议设置已更新'];
+    case 'memberJoined':
+      return [...userSeg(entry.actor), ' 加入会议'];
+  }
+}
+
+/** 收集日志中引用的用户 id（前端据此批量获取用户信息）。 */
+export function logUserRefs(entry: LogEntry): string[] {
+  return formatLogSegments(entry)
+    .filter((seg): seg is { userId: string } => typeof seg !== 'string')
+    .map(seg => seg.userId);
 }

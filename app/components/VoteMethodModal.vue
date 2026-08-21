@@ -60,14 +60,15 @@ function startBallot(): void {
         </div>
 
         <div class="grid grid-cols-2 gap-2">
-          <button
+          <UButton
             v-for="opt in options"
             :key="opt.value"
-            type="button"
-            class="flex flex-col items-start gap-1 rounded-none border-2 px-3 py-3 text-left transition-colors"
+            color="neutral"
+            variant="ghost"
+            class="flex-col items-start gap-1 rounded-none border-2 px-3 py-3"
             :class="selected === opt.value
-              ? 'border-primary bg-accented'
-              : 'border-default hover:border-accented hover:bg-elevated'"
+              ? 'border-primary bg-accented hover:bg-accented'
+              : 'border-default hover:border-accented'"
             @click="selected = opt.value"
           >
             <span class="flex items-center gap-1.5 text-sm font-medium" :class="selected === opt.value ? 'text-highlighted' : 'text-default'">
@@ -75,7 +76,7 @@ function startBallot(): void {
               {{ opt.label }}
             </span>
             <span class="text-xs text-muted">{{ opt.description }}</span>
-          </button>
+          </UButton>
         </div>
       </div>
     </template>

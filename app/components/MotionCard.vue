@@ -3,7 +3,7 @@ import type { Motion, MotionCategory } from '#shared/utils/mettings';
 import { computed } from 'vue';
 import { MotionCategoryMap, MotionStatusMap } from '#shared/utils/mettings';
 import { canCastBallot, canOpenVote, canSecondMotion, MOTION_CATEGORY_LABELS, MOTION_STATUS_LABELS, motionMeta } from '#shared/utils/rules';
-import { closeVote, formatTime, meetingState, resolveRuling, secondMotion, userName } from '~/utils/meetings';
+import { closeVote, formatTime, meetingState, resolveRuling, secondMotion } from '~/utils/meetings';
 import { notifyError, thresholdLabel, uiState } from '~/utils/ui';
 
 const props = defineProps<{
@@ -72,7 +72,7 @@ function categoryColor(category: MotionCategory): string {
     <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted">
       <span class="flex items-center gap-1">
         <UIcon name="i-lucide-user-round" class="size-3.5" />
-        {{ userName(motion.proposer) }} 提出
+        <InlineUser :user-id="motion.proposer" /> 提出
       </span>
       <span v-if="meta.needsSecond" class="flex items-center gap-1">
         <UIcon name="i-lucide-thumbs-up" class="size-3.5" />

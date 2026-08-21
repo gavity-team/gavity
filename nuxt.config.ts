@@ -3,6 +3,7 @@ import { version } from './package.json';
 export default defineNuxtConfig({
   modules: [
     '@nuxt/ui',
+    '@vueuse/nuxt',
   ],
 
   app: {

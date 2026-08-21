@@ -90,21 +90,22 @@ function closeEarly(): void {
 
         <template v-if="myBallot === undefined">
           <div class="grid grid-cols-3 gap-2">
-            <button
+            <UButton
               v-for="opt in options"
               :key="opt.value"
-              type="button"
-              class="flex flex-col items-center gap-1.5 rounded-none border-2 px-3 py-4 transition-colors"
+              color="neutral"
+              variant="ghost"
+              class="flex-col items-center gap-1.5 rounded-none border-2 px-3 py-4"
               :class="selected === opt.value
-                ? 'border-primary bg-accented'
-                : 'border-default hover:border-accented hover:bg-elevated'"
+                ? 'border-primary bg-accented hover:bg-accented'
+                : 'border-default hover:border-accented'"
               @click="selected = opt.value"
             >
               <UIcon :name="opt.icon" class="size-6" :class="opt.iconClass" />
               <span class="text-sm font-medium" :class="selected === opt.value ? 'text-highlighted' : 'text-default'">
                 {{ opt.label }}
               </span>
-            </button>
+            </UButton>
           </div>
         </template>
         <UAlert

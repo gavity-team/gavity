@@ -18,27 +18,7 @@ import {
   MeetingStatusMap,
 } from '#shared/utils/mettings';
 import { uiState } from './ui';
-
-export type { AgendaPatch, LogEntry, LogKind, LogTone, MemberStats, MotionInput, MotionPatch } from '#shared/utils/meeting-engine';
-
-export interface DemoUser {
-  id: string
-  name: string
-}
-
-/** 原型演示用的与会者名册。 */
-export const DEMO_USERS: DemoUser[] = [
-  { id: 'u1', name: '张三' },
-  { id: 'u2', name: '李四' },
-  { id: 'u3', name: '王五' },
-  { id: 'u4', name: '赵六' },
-  { id: 'u5', name: '孙七' },
-  { id: 'u6', name: '周八' },
-];
-
-function demoNames(): Record<string, string> {
-  return Object.fromEntries(DEMO_USERS.map(u => [u.id, u.name]));
-}
+import { DEMO_USERS, setUserInfos } from './users';
 
 function createDemoMeeting(): Meeting {
   return {
@@ -75,21 +55,15 @@ export const meetingState = reactive({
   /** 等待主持人裁决的动议 id。 */
   pendingRulingMotionId: null as number | null,
   logSeq: 0,
-  /** userId -> 显示名。 */
-  names: demoNames(),
   /** 在线成员 id（live 模式由服务端广播）。 */
   onlineIds: [] as string[],
   /** demo = 本地单人演示；live = 多人实时会议。 */
   mode: 'demo' as 'demo' | 'live',
   /** live 模式下的 WebSocket 连接状态。 */
   connected: false,
+  /** live 模式下是否已收到服务端首包全量快照（防闪现 demo 数据）。 */
+  synced: true,
 });
-
-export function userName(id: string | null | undefined): string {
-  if (!id)
-    return '系统';
-  return meetingState.names[id] ?? id;
-}
 
 export function formatTime(at: number): string {
   return new Date(at).toLocaleTimeString('zh-CN', { hour12: false });
@@ -136,7 +110,7 @@ function resetDemoState(): void {
   meetingState.logs = [];
   meetingState.pendingRulingMotionId = null;
   meetingState.logSeq = 0;
-  meetingState.names = demoNames();
+  setUserInfos(DEMO_USERS.map(u => ({ id: u.id, name: u.name, avatar: u.avatar })));
   meetingState.onlineIds = [];
   meetingState.mode = 'demo';
   meetingState.connected = false;

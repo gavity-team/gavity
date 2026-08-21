@@ -3,6 +3,7 @@ import { computed, onMounted, onUnmounted } from 'vue';
 import { navigateTo, useRoute } from '#app';
 import { definePageMeta } from '#imports';
 import { authClient } from '~/utils/auth';
+import { meetingState } from '~/utils/meetings';
 import { connectMeeting, disconnectMeeting } from '~/utils/remote';
 
 /**
@@ -26,5 +27,9 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <MeetingConsole />
+  <div v-if="!meetingState.synced" class="flex h-screen items-center justify-center gap-2 bg-default text-muted">
+    <UIcon name="i-lucide-loader-circle" class="size-5 animate-spin" />
+    连接中…
+  </div>
+  <MeetingConsole v-else />
 </template>

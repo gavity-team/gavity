@@ -1,11 +1,14 @@
 import type { PeerIdentity, RoomPeer } from '#server/utils/rooms';
 import { eq } from 'drizzle-orm';
-import { defineWebSocketHandler } from 'h3';
+import { createError, defineWebSocketHandler } from 'h3';
+import { z } from 'zod';
 import { getAuth } from '#server/utils/auth';
 import { getDb } from '#server/utils/db';
 import { meetings } from '#server/utils/db/schema';
 import { handleAction, joinRoom, leaveRoom, touchPresence } from '#server/utils/rooms';
 import { ClientAction } from '#shared/utils/protocol';
+
+const wsRouteSchema = z.object({ id: z.coerce.number().int() });
 
 /**
  * 多人会议 WebSocket 入口：升级阶段用 better-auth session 鉴权，
@@ -15,22 +18,19 @@ export default defineWebSocketHandler({
   async upgrade(request) {
     const session = await getAuth().api.getSession({ headers: request.headers });
     if (!session)
-      return new Response('请先登录', { status: 401 });
+      throw createError({ statusCode: 401, message: '请先登录' });
     if (!session.user.emailVerified)
-      return new Response('请先完成邮箱验证', { status: 403 });
+      throw createError({ statusCode: 403, message: '请先完成邮箱验证' });
 
     // /api/meetings/:id/ws
-    const segments = new URL(request.url).pathname.split('/');
-    const meetingId = Number.parseInt(segments[segments.length - 2] ?? '', 10);
-    if (!Number.isInteger(meetingId))
-      return new Response('会议不存在', { status: 404 });
+    const parsed = wsRouteSchema.parse({ id: new URL(request.url).pathname.split('/')[3] });
+    const meetingId = parsed.id;
     const [row] = await getDb().select({ id: meetings.id }).from(meetings).where(eq(meetings.id, meetingId));
     if (!row)
-      return new Response('会议不存在', { status: 404 });
+      throw createError({ statusCode: 404, message: '会议不存在' });
 
     request.context.meetingId = meetingId;
     request.context.userId = session.user.id;
-    request.context.name = session.user.name || session.user.email;
   },
 
   async open(peer) {

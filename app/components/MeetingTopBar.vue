@@ -2,8 +2,9 @@
 import { computed, ref } from 'vue';
 import { MeetingStatusMap } from '#shared/utils/mettings';
 import { canToggleRecordMode, MEETING_STATUS_LABELS, roleOf } from '#shared/utils/rules';
-import { DEMO_USERS, endMeeting, meetingState, resetMeeting, resumeMeeting, startMeeting, toggleRecordMode, userName } from '~/utils/meetings';
+import { endMeeting, meetingState, resetMeeting, resumeMeeting, startMeeting, toggleRecordMode } from '~/utils/meetings';
 import { notifyError, uiState } from '~/utils/ui';
+import { DEMO_USERS } from '~/utils/users';
 
 const meeting = computed(() => meetingState.meeting);
 const statusLabel = computed(() => MEETING_STATUS_LABELS[meeting.value.status]);
@@ -11,7 +12,6 @@ const statusLabel = computed(() => MEETING_STATUS_LABELS[meeting.value.status]);
 const isChairUser = computed(() => meeting.value.profile.chair === meetingState.currentUserId);
 /** live = 多人实时会议；demo = 单人演示（可切换身份）。 */
 const isLive = computed(() => meetingState.mode === 'live');
-const currentName = computed(() => userName(meetingState.currentUserId));
 const recordMode = computed({
   get: () => meeting.value.recordMode,
   set: () => run(toggleRecordMode()),
@@ -68,7 +68,7 @@ function onResetMeeting(): void {
 
     <div class="flex-1" />
 
-    <template v-if="!recordModeCheck.ok">
+    <template v-if="recordModeCheck.ok">
       <UTooltip :text="recordModeCheck.ok ? '解除所有操作限制，自由补录' : recordModeCheck.reason">
         <div class="flex items-center gap-2">
           <span class="text-xs">记录模式</span>
@@ -83,10 +83,7 @@ function onResetMeeting(): void {
       <UBadge v-if="!meetingState.connected" color="warning" variant="subtle" size="sm">
         连接中…
       </UBadge>
-      <div class="flex items-center gap-2">
-        <UAvatar :alt="currentName" size="2xs" />
-        <span class="max-w-28 truncate text-sm text-default">{{ currentName }}</span>
-      </div>
+      <InlineUser :user-id="meetingState.currentUserId" class="text-sm" />
       <UButton
         v-if="!isChairUser"
         to="/"

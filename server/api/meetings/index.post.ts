@@ -1,17 +1,20 @@
-import { createError, defineEventHandler, readBody } from 'h3';
+import { createError, defineEventHandler, readValidatedBody } from 'h3';
+import { z } from 'zod';
 import { requireVerifiedSession } from '#server/utils/auth';
 import { getDb } from '#server/utils/db';
 import { meetingCodes, meetings } from '#server/utils/db/schema';
 import { generateCode } from '#server/utils/id';
 import { MeetingStatusMap } from '#shared/utils/mettings';
 
+const bodySchema = z.object({ title: z.string().optional() });
+
 /** 入会码长度。 */
 const CODE_LENGTH = 6;
 
 export default defineEventHandler(async (event) => {
   const session = await requireVerifiedSession(event.headers);
-  const body = await readBody<{ title?: string }>(event).catch(() => null);
-  const title = body?.title?.trim() || '未命名会议';
+  const body = await readValidatedBody(event, bodySchema.parse);
+  const title = body.title?.trim() || '未命名会议';
   const [meeting] = await getDb().insert(meetings).values({
     title,
     chairId: session.user.id,

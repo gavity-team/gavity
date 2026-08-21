@@ -5,7 +5,7 @@ import { useToast } from '@nuxt/ui/runtime/composables/useToast.js';
 import { computed, reactive, ref, watch } from 'vue';
 import { MotionStatusMap, MotionTypeMap } from '#shared/utils/mettings';
 import { MOTION_CATEGORY_LABELS, MOTION_STATUS_LABELS, motionMeta } from '#shared/utils/rules';
-import { formatTime, meetingState, updateMotion, userName } from '~/utils/meetings';
+import { formatTime, meetingState, updateMotion } from '~/utils/meetings';
 import { uiState } from '~/utils/ui';
 
 const toast = useToast();
@@ -111,7 +111,7 @@ watch(
             </UBadge>
           </template>
           <template #proposer-cell="{ row }">
-            {{ userName(row.original.proposer) }}
+            <InlineUser :user-id="row.original.proposer" />
           </template>
           <template #seconders-cell="{ row }">
             {{ row.original.seconders.length }}

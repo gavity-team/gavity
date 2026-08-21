@@ -2,7 +2,7 @@
 import { computed, ref, watch } from 'vue';
 import { VoteMethodMap } from '#shared/utils/mettings';
 import { motionMeta, VOTE_METHOD_LABELS } from '#shared/utils/rules';
-import { meetingState, userName } from '~/utils/meetings';
+import { meetingState } from '~/utils/meetings';
 import { thresholdLabel, uiState } from '~/utils/ui';
 
 const meeting = computed(() => meetingState.meeting);
@@ -100,9 +100,7 @@ const tally = computed(() => {
               {{ group.label }}
             </span>
             <span v-if="group.ids.length" class="flex flex-wrap gap-1.5">
-              <UBadge v-for="id in group.ids" :key="id" size="sm" color="neutral" variant="subtle">
-                {{ userName(id) }}
-              </UBadge>
+              <InlineUser v-for="id in group.ids" :key="id" :user-id="id" />
             </span>
             <span v-else class="text-muted">—</span>
           </div>
