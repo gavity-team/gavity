@@ -27,7 +27,7 @@ export default defineNuxtConfig({
 
   routeRules: {
     '/admin': { redirect: '/admin/service' },
-    '/admin/**': { appLayout: 'admin', appMiddleware: 'staff-only' },
+    '/admin/**': { appLayout: 'admin', appMiddleware: 'admin-only' },
   },
 
   nitro: {

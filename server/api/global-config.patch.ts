@@ -1,6 +1,6 @@
 import { defineEventHandler, readValidatedBody } from 'h3';
 import * as z from 'zod';
-import { requireStaffSession } from '#server/utils/auth';
+import { requireAdminSession } from '#server/utils/auth';
 import { getDb } from '#server/utils/db';
 import { globalConfig } from '#server/utils/db/schema';
 import { publishEvent } from '#server/utils/redis';
@@ -18,7 +18,7 @@ const RequestBody = z.object({
 });
 
 export default defineEventHandler(async (ev) => {
-  await requireStaffSession(ev.headers);
+  await requireAdminSession(ev.headers);
   const body = await readValidatedBody(ev, RequestBody.parse);
   await getDb().update(globalConfig).set({ [body.key]: body.value });
   await publishEvent('globalConfig.updated', { key: body.key });

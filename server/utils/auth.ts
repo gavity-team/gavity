@@ -39,7 +39,7 @@ const ZH_TRANSLATIONS = {
 
 const accessControl = createAccessControl(defaultStatements);
 
-const staffRole = accessControl.newRole({
+const adminRole = accessControl.newRole({
   user: ['create', 'list', 'set-role', 'ban', 'impersonate', 'delete', 'set-password', 'set-email', 'get', 'update'],
   session: ['list', 'revoke', 'delete'],
 });
@@ -93,10 +93,10 @@ export const getAuth = toCachedFn(() => {
       admin({
         ac: accessControl,
         roles: {
-          staff: staffRole,
+          admin: adminRole,
           user: userRole,
         },
-        adminRoles: ['staff'],
+        adminRoles: ['admin'],
         defaultRole: 'user',
       }),
 
@@ -126,7 +126,7 @@ export const getAuth = toCachedFn(() => {
 
 export type Auth = ReturnType<typeof getAuth>;
 
-export async function requireStaffSession(headers: Headers): Promise<NonNullable<Awaited<ReturnType<Auth['api']['getSession']>>>> {
+export async function requireAdminSession(headers: Headers): Promise<NonNullable<Awaited<ReturnType<Auth['api']['getSession']>>>> {
   const session = await getAuth().api.getSession({ headers });
   if (!session) {
     throw createError({ status: 401, message: '请先登录' });
@@ -135,7 +135,7 @@ export async function requireStaffSession(headers: Headers): Promise<NonNullable
     throw createError({ status: 403, message: '请先完成邮箱验证' });
   }
   const roles = session.user.role?.split(',').map(role => role.trim()) ?? [];
-  if (!roles.includes('staff')) {
+  if (!roles.includes('admin')) {
     throw createError({ status: 403, message: '无权限访问' });
   }
   return session;

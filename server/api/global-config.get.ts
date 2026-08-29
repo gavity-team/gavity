@@ -1,10 +1,10 @@
 import { defineEventHandler } from 'h3';
-import { requireStaffSession } from '#server/utils/auth';
+import { requireAdminSession } from '#server/utils/auth';
 import { getDb } from '#server/utils/db';
 import { globalConfig } from '#server/utils/db/schema';
 
 export default defineEventHandler(async (ev) => {
-  await requireStaffSession(ev.headers);
+  await requireAdminSession(ev.headers);
   const db = getDb();
 
   let [config] = await db
