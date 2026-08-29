@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as z from 'zod';
 
 export const EnvConfig = z.object({
   DATABASE_URL: z.url().regex(/^postgres(?:ql)?:\/\//),
@@ -7,6 +7,7 @@ export const EnvConfig = z.object({
   SECRET: z.string().min(32),
   SMTP_URL: z.url().optional(),
   SMTP_FROM: z.string().optional(),
+  REDIS_URL: z.url(),
 });
 
 export type EnvConfig = z.infer<typeof EnvConfig>;

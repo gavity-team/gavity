@@ -14,6 +14,17 @@ services:
       retries: 10
     restart: unless-stopped
 
+  redis:
+    image: redis:8-alpine
+    restart: unless-stopped
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   app:
     image: gavityteam/gavity:latest
     ports:
@@ -23,15 +34,16 @@ services:
       DB_AUTO_MIGRATE: 'true'
       EXTERNAL_URL: ${EXTERNAL_URL}
       SECRET: ${BETTER_AUTH_SECRET}
-      SMTP_HOST: ${SMTP_HOST}
-      SMTP_PORT: ${SMTP_PORT}
-      SMTP_USER: ${SMTP_USER}
-      SMTP_PASS: ${SMTP_PASS}
-      SMTP_FROM: ${SMTP_FROM}
+      REDIS_URL: redis://redis:6379
+      SMTP_URL: ${SMTP_URL:-}
+      SMTP_FROM: ${SMTP_FROM:-}
     depends_on:
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     restart: unless-stopped
 
 volumes:
   db-data:
+  redis-data:

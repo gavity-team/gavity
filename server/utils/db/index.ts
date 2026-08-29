@@ -1,5 +1,6 @@
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
+import { relations } from '#server/utils/db/schema';
 import { getEnvConfig } from '#server/utils/env';
 import { toCachedFn } from '#shared/utils/fn';
 
@@ -10,4 +11,7 @@ export const getPg = toCachedFn(() => {
   });
 });
 
-export const getDb = toCachedFn(() => drizzle({ client: getPg() }));
+export const getDb = toCachedFn(() => drizzle({
+  client: getPg(),
+  relations,
+}));

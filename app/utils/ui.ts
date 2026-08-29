@@ -1,3 +1,4 @@
+import type { Toast } from '@nuxt/ui/runtime/composables/useToast.js';
 import type { VoteTreshold } from '#shared/utils/mettings';
 import { useToast } from '@nuxt/ui/runtime/composables/useToast.js';
 import { reactive } from 'vue';
@@ -26,10 +27,26 @@ export function thresholdLabel(threshold: VoteTreshold): string {
   return '简单多数';
 }
 
+type Toaster = ReturnType<typeof useToast>;
+export type ToastType = 'success' | 'error';
+const ToastIcon: Record<ToastType, string> = {
+  success: 'i-lucide-circle-check',
+  error: 'i-lucide-circle-x',
+};
+
+export function showToast(toaster: Toaster, type: ToastType, message: string, options?: Partial<Toast>) {
+  return toaster.add({
+    title: message,
+    color: type,
+    icon: ToastIcon[type],
+    ...options,
+  });
+}
+
 /** 操作失败时弹出错误 toast；成功（null）时无操作。 */
-export function notifyError(result: string | null): void {
+export function notifyError(result: unknown): void {
   if (!result)
     return;
   const toast = useToast();
-  toast.add({ title: result, color: 'error', icon: 'i-lucide-circle-alert' });
+  toast.add({ title: String(result), color: 'error', icon: 'i-lucide-circle-x' });
 }

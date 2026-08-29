@@ -4,5 +4,6 @@ export default ts({
   ignores: ['server/utils/db/schema/auth.ts'],
   rules: {
     'ts/no-redeclare': 'off',
+    '@typescript-eslint/no-unsafe-argument': 'off',
   },
 });

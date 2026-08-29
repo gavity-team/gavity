@@ -1,11 +1,7 @@
 <script setup lang="ts">
-import { computed } from 'vue';
 import { authClient } from '~/utils/auth';
 
-/** useSession 返回 DeepReadonly Ref（初始值可能为 undefined），这里用 computed 取出便于模板使用。 */
-const sessionState = authClient.useSession();
-const session = computed(() => sessionState.value?.data ?? null);
-const isPending = computed(() => sessionState.value?.isPending ?? true);
+const session = authClient.useSession();
 
 async function onSignOut(): Promise<void> {
   await authClient.signOut();
@@ -20,11 +16,11 @@ async function onSignOut(): Promise<void> {
         <span class="text-2xl text-highlighted" style="font-family: Google Sans Flex;">Gavity</span>
       </NuxtLink>
       <div class="flex-1" />
-      <template v-if="!isPending">
-        <template v-if="session?.user">
+      <template v-if="!session.isPending">
+        <template v-if="session?.data?.user">
           <div class="flex items-center gap-2">
-            <UAvatar :alt="session.user.name || session.user.email" size="2xs" />
-            <span class="text-sm text-default">{{ session.user.name || session.user.email }}</span>
+            <UAvatar :alt="session.data.user.name || session.data.user.email" size="2xs" />
+            <span class="text-sm text-default">{{ session.data.user.name || session.data.user.email }}</span>
           </div>
           <UButton
             label="退出登录"

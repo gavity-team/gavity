@@ -3,12 +3,11 @@ import { version } from './package.json';
 export default defineNuxtConfig({
   modules: [
     '@nuxt/ui',
-    '@vueuse/nuxt',
   ],
 
   app: {
     head: {
-      title: 'Gavity',
+      titleTemplate: '%s | Gavity',
       meta: [
         { name: 'description', content: '基于罗伯特议事规则的会议协作工具' },
       ],
@@ -24,6 +23,11 @@ export default defineNuxtConfig({
 
   imports: {
     autoImport: false,
+  },
+
+  routeRules: {
+    '/admin': { redirect: '/admin/service' },
+    '/admin/**': { appLayout: 'admin', appMiddleware: 'staff-only' },
   },
 
   nitro: {

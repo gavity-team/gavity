@@ -1,9 +1,9 @@
 {
   "version": "8",
   "dialect": "postgres",
-  "id": "a369a319-2c90-4bb1-bb4b-07c619f046f7",
+  "id": "7382c5b1-b101-4386-a84e-6a406221c852",
   "prevIds": [
-    "d39fb990-e5f2-4396-a909-a9341a0d6c8d"
+    "a369a319-2c90-4bb1-bb4b-07c619f046f7"
   ],
   "ddl": [
     {
@@ -27,6 +27,12 @@
     {
       "isRlsEnabled": false,
       "name": "verifications",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "global_config",
       "entityType": "tables",
       "schema": "public"
     },
@@ -324,6 +330,19 @@
     {
       "type": "text",
       "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "impersonated_by",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "sessions"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
       "notNull": true,
       "dimensions": 0,
       "default": null,
@@ -395,6 +414,58 @@
       "generated": null,
       "identity": null,
       "name": "image",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "users"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": "'user'",
+      "generated": null,
+      "identity": null,
+      "name": "role",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "users"
+    },
+    {
+      "type": "boolean",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": "false",
+      "generated": null,
+      "identity": null,
+      "name": "banned",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "users"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "ban_reason",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "users"
+    },
+    {
+      "type": "timestamp",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "ban_expires",
       "entityType": "columns",
       "schema": "public",
       "table": "users"
@@ -502,6 +573,97 @@
       "entityType": "columns",
       "schema": "public",
       "table": "verifications"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "'singleton'",
+      "generated": null,
+      "identity": null,
+      "name": "id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "global_config"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "app_url",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "global_config"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "default_language",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "global_config"
+    },
+    {
+      "type": "boolean",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "allow_registration",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "global_config"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "smtp_url",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "global_config"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "global_config"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "updated_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "global_config"
     },
     {
       "type": "text",
@@ -936,6 +1098,16 @@
     },
     {
       "columns": [
+        "id"
+      ],
+      "nameExplicit": false,
+      "name": "global_config_pkey",
+      "schema": "public",
+      "table": "global_config",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
         "code"
       ],
       "nameExplicit": false,
@@ -977,8 +1149,5 @@
       "entityType": "uniques"
     }
   ],
-  "renames": [
-    "public.accounts.provider_account_id->public.accounts.account_id",
-    "public.accounts.accounts_issuer_providerAccountId_uidx->public.accounts.accounts_issuer_accountId_uidx"
-  ]
+  "renames": []
 }

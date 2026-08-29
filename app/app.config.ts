@@ -12,5 +12,16 @@ export default defineAppConfig({
       error: 'red',
       neutral: 'zinc',
     },
+
+    formField: {
+      variants: {
+        orientation: {
+          horizontal: {
+            root: 'justify-start',
+            container: 'flex',
+          },
+        },
+      },
+    },
   },
 });

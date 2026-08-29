@@ -2,14 +2,17 @@ import { drizzleAdapter } from '@better-auth/drizzle-adapter/relations-v2';
 import { i18n } from '@better-auth/i18n';
 import { betterAuth } from 'better-auth/minimal';
 import { openAPI } from 'better-auth/plugins';
+import { createAccessControl } from 'better-auth/plugins/access';
+import { admin } from 'better-auth/plugins/admin';
+import { defaultStatements } from 'better-auth/plugins/admin/access';
 import { emailOTP } from 'better-auth/plugins/email-otp';
 import { createError } from 'h3';
 import { getEnvConfig } from '#server/utils/env';
 import { toCachedFn } from '#shared/utils/fn';
 import { getDb } from './db';
 import * as schema from './db/schema';
+import { queueEmailSending } from './email';
 import { generateCode } from './id';
-import { sendMail } from './mail';
 
 /** 错误文案统一由服务端下发中文，前端直接展示 error.message。 */
 const ZH_TRANSLATIONS = {
@@ -34,6 +37,18 @@ const ZH_TRANSLATIONS = {
   TOO_MANY_ATTEMPTS: '尝试次数过多，请重新获取验证码',
 };
 
+const accessControl = createAccessControl(defaultStatements);
+
+const staffRole = accessControl.newRole({
+  user: ['create', 'list', 'set-role', 'ban', 'impersonate', 'delete', 'set-password', 'set-email', 'get', 'update'],
+  session: ['list', 'revoke', 'delete'],
+});
+
+const userRole = accessControl.newRole({
+  user: [],
+  session: [],
+});
+
 export const getAuth = toCachedFn(() => {
   const env = getEnvConfig();
 
@@ -51,6 +66,7 @@ export const getAuth = toCachedFn(() => {
     advanced: {
       database: {
         generateId: ({ model }) => generateCode(model === 'user' ? 8 : 16),
+        join: true,
       },
       ipAddress: {
         trustedProxies: [
@@ -74,13 +90,23 @@ export const getAuth = toCachedFn(() => {
     },
 
     plugins: [
+      admin({
+        ac: accessControl,
+        roles: {
+          staff: staffRole,
+          user: userRole,
+        },
+        adminRoles: ['staff'],
+        defaultRole: 'user',
+      }),
+
       emailOTP({
         sendVerificationOnSignUp: true,
         overrideDefaultEmailVerification: true,
         resendStrategy: 'reuse',
         async sendVerificationOTP({ email, otp, type }) {
           const subject = type === 'forget-password' ? 'Gavity 密码重置验证码' : 'Gavity 邮箱验证码';
-          await sendMail(email, subject, `你的验证码是 ${otp}，5 分钟内有效。若非本人操作，请忽略本邮件。`);
+          await queueEmailSending(email, subject, `你的验证码是 ${otp}，5 分钟内有效。若非本人操作，请忽略本邮件。`);
         },
       }),
 
@@ -93,7 +119,6 @@ export const getAuth = toCachedFn(() => {
     ],
 
     trustedOrigins: [
-      'https://gavity.localhost',
       env.EXTERNAL_URL,
     ],
   });
@@ -101,14 +126,29 @@ export const getAuth = toCachedFn(() => {
 
 export type Auth = ReturnType<typeof getAuth>;
 
+export async function requireStaffSession(headers: Headers): Promise<NonNullable<Awaited<ReturnType<Auth['api']['getSession']>>>> {
+  const session = await getAuth().api.getSession({ headers });
+  if (!session) {
+    throw createError({ status: 401, message: '请先登录' });
+  }
+  if (!session.user.emailVerified) {
+    throw createError({ status: 403, message: '请先完成邮箱验证' });
+  }
+  const roles = session.user.role?.split(',').map(role => role.trim()) ?? [];
+  if (!roles.includes('staff')) {
+    throw createError({ status: 403, message: '无权限访问' });
+  }
+  return session;
+}
+
 /** 校验登录态与邮箱验证状态，未通过时抛出 HTTP 错误。 */
 export async function requireVerifiedSession(headers: Headers): Promise<NonNullable<Awaited<ReturnType<Auth['api']['getSession']>>>> {
   const session = await getAuth().api.getSession({ headers });
   if (!session) {
-    throw createError({ statusCode: 401, message: '请先登录' });
+    throw createError({ status: 401, message: '请先登录' });
   }
   if (!session.user.emailVerified) {
-    throw createError({ statusCode: 403, message: '请先完成邮箱验证' });
+    throw createError({ status: 403, message: '请先完成邮箱验证' });
   }
   return session;
 }
