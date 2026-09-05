@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import type { NuxtError } from '#app';
+import { onMounted } from 'vue';
 
-defineProps<{
+const { error } = defineProps<{
   error: NuxtError
 }>();
+
+onMounted(() => console.error(error));
 </script>
 
 <template>

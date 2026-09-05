@@ -1,6 +1,4 @@
 import type { UserBriefInfo } from '#shared/utils/users';
-import { useThrottleFn } from '@vueuse/core';
-import { reactive } from 'vue';
 
 /**
  * 全局用户信息缓存（与会议状态完全解耦）。
@@ -24,30 +22,29 @@ export const DEMO_USERS: DemoUser[] = [
 ];
 
 /** 全局用户缓存（id -> 信息）；初始即注入 DEMO_USERS，使 demo 日志也能显示中文名。 */
-const userCache = reactive(new Map<string, UserBriefInfo>(
+const userCache = new Map<string, UserBriefInfo>(
   DEMO_USERS.map(u => [u.id, { id: u.id, name: u.name, avatar: u.avatar }] as [string, UserBriefInfo]),
-));
-
-/** 合批查询窗口：本窗口内累积的缺失 id 合并为一次请求。 */
-const FLUSH_MS = 50;
+);
 /** 单次请求 id 数上限，与后端保持一致。 */
 const MAX_BATCH = 100;
 
 /** 待查询（尚未发起请求）的 id。 */
-const pending = new Set<string>();
-/** 已发起请求（成功或进行中）的 id，避免重复查询。 */
-const requested = new Set<string>();
-
-/** 节流 flush：窗口内累积的 id 合并为一次请求；尾随执行，新增不延长窗口。 */
-const throttledFlush = useThrottleFn(() => void flush(), FLUSH_MS, true, false);
+const inFlight = new Map<string, Promise<UserBriefInfo | null>>();
 
 /** 直接写入缓存（demo 预置名册使用），并清空查询标记。 */
 export function setUserInfos(users: UserBriefInfo[]): void {
   userCache.clear();
-  pending.clear();
-  requested.clear();
+  inFlight.clear();
   for (const user of users)
     userCache.set(user.id, user);
+}
+
+/** 将查询结果合并进缓存，不影响已有的演示数据或其他用户信息。 */
+export function cacheUserInfos(users: UserBriefInfo[]): void {
+  for (const user of users) {
+    userCache.set(user.id, user);
+    inFlight.delete(user.id);
+  }
 }
 
 /** 读取缓存的用户信息（不触发查询）。 */
@@ -55,39 +52,31 @@ export function getUserInfo(id: string | undefined | null): UserBriefInfo | null
   return typeof id === 'string' ? userCache.get(id) ?? null : null;
 }
 
-/** 确保若干用户信息进入缓存：缺失的 id 会被节流合批查询。 */
-export function ensureUsers(ids: (string | null | undefined)[]): void {
-  let added = false;
-  for (const id of ids) {
-    if (!id || userCache.has(id) || requested.has(id) || pending.has(id))
-      continue;
-    pending.add(id);
-    added = true;
+export async function loadUsers(ids: (string | null | undefined)[]): Promise<void> {
+  const uniqueIds = [...new Set(ids.filter((id): id is string => Boolean(id)))];
+  const missingIds = uniqueIds.filter(id => !userCache.has(id) && !inFlight.has(id));
+  for (const idsChunk of chunk(missingIds, MAX_BATCH)) {
+    const request = $fetch<UserBriefInfo[]>('/api/users', {
+      query: { ids: idsChunk.join(',') },
+    }).then((users) => {
+      cacheUserInfos(users);
+      return users;
+    }).catch(() => []);
+    for (const id of idsChunk)
+      inFlight.set(id, request.then(users => users.find(user => user.id === id) ?? null));
   }
-  if (added)
-    throttledFlush();
+  await Promise.all(uniqueIds.map(id => inFlight.get(id)));
+  for (const id of uniqueIds)
+    inFlight.delete(id);
 }
 
-async function flush(): Promise<void> {
-  const ids = [...pending].slice(0, MAX_BATCH);
-  if (!ids.length)
-    return;
-  for (const id of ids) {
-    pending.delete(id);
-    requested.add(id);
-  }
-  try {
-    const rows = await $fetch<UserBriefInfo[]>('/api/users', {
-      query: { ids: ids.join(',') },
-    });
-    for (const row of rows)
-      userCache.set(row.id, row);
-  } catch {
-    // 查询失败：撤销标记，允许后续重试
-    for (const id of ids)
-      requested.delete(id);
-  }
-  // 处理窗口期内新累积的 id（含本次超出 MAX_BATCH 的部分）
-  if (pending.size)
-    throttledFlush();
+export function ensureUsers(ids: (string | null | undefined)[]): void {
+  void loadUsers(ids);
+}
+
+function chunk<T>(items: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let index = 0; index < items.length; index += size)
+    chunks.push(items.slice(index, index + size));
+  return chunks;
 }

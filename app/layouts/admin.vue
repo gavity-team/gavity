@@ -6,7 +6,7 @@ const navItems: NavigationMenuItem[] = [
   { label: '身份验证', icon: 'i-lucide-shield', to: '/admin/auth' },
   { label: '用户管理', icon: 'i-lucide-users', to: '/admin/users' },
   { label: '组织管理', icon: 'i-lucide-building-2', to: '/admin/orgs' },
-  { label: '外部集成', icon: 'i-lucide-cable', to: '/admin/integration' },
+  { label: '外部集成', icon: 'i-lucide-webhook', to: '/admin/integration' },
 ];
 </script>
 

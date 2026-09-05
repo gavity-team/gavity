@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import { computed, watch } from 'vue';
-import { ensureUsers, getUserInfo } from '~/utils/users';
+import type { UserBriefInfo } from '#shared/utils/users';
+import { useQuery } from '@tanstack/vue-query';
+import { computed } from 'vue';
+import { cacheUserInfos, getUserInfo } from '~/utils/users';
 
 const props = withDefaults(defineProps<{
   userId: string | null | undefined
@@ -12,9 +14,21 @@ const props = withDefaults(defineProps<{
 });
 
 // 显示名与头像按需向后端查询并缓存（节流合批）
-watch(() => props.userId, id => ensureUsers([id]), { immediate: true });
-
-const info = computed(() => (props.userId ? getUserInfo(props.userId) : null));
+const userQuery = useQuery({
+  queryKey: computed(() => ['users', 'brief', props.userId] as const),
+  queryFn: async () => {
+    const id = props.userId;
+    if (!id)
+      return null;
+    const users = await $fetch<UserBriefInfo[]>('/api/users', { query: { ids: id } });
+    cacheUserInfos(users);
+    return getUserInfo(id);
+  },
+  enabled: computed(() => Boolean(props.userId) && !getUserInfo(props.userId)),
+  initialData: computed(() => getUserInfo(props.userId)),
+});
+const info = computed(() => userQuery.data.value ?? getUserInfo(props.userId));
+const loading = computed(() => userQuery.isPending.value);
 const displayName = computed(() => {
   if (!props.userId)
     return '系统';
@@ -24,15 +38,21 @@ const displayName = computed(() => {
 
 <template>
   <span
-    class="relative isolate inline-flex items-center gap-1 rounded-full pl-px pr-1 align-text-bottom cursor-pointer before:absolute before:-inset-y-px before:inset-x-0 before:-z-10 before:rounded-full before:transition-colors"
+    class="relative isolate inline-flex items-center gap-1 rounded-full pl-px pr-[0.5em] align-text-bottom cursor-pointer before:absolute before:-inset-y-px before:inset-x-0 before:-z-10 before:rounded-full before:transition-colors"
     :class="variant === 'primary' ? 'before:bg-elevated hover:before:bg-accented' : 'hover:before:bg-elevated'"
   >
-    <UAvatar
-      :src="info?.avatar"
-      :alt="displayName"
-      :size
-      :ui="size ? undefined : { root: 'size-[1.4em] text-[length:inherit]', fallback: 'text-[0.6em]' }"
-    />
-    <span class="max-w-40 truncate leading-none">{{ displayName }}</span>
+    <template v-if="loading">
+      <USkeleton class="size-[1.4em] rounded-full" />
+      <USkeleton class="h-3 w-16" />
+    </template>
+    <template v-else>
+      <UAvatar
+        :src="info?.avatar ?? undefined"
+        :alt="displayName"
+        :size
+        :ui="size ? undefined : { root: 'size-[1.4em] text-[length:inherit]', fallback: 'text-[0.6em]' }"
+      />
+      <span class="max-w-40 truncate leading-none">{{ displayName }}</span>
+    </template>
   </span>
 </template>

@@ -17,7 +17,7 @@ function onSuccess() {
 }
 
 const save = useAsyncState(
-  () => $fetch('/api/global-config', { method: 'PATCH', body: { key: props.field, value: inputValue.value } }),
+  () => globalThis.fetch('/api/global-config', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ key: props.field, value: inputValue.value }) }),
   null,
   { immediate: false, onSuccess, onError: notifyError },
 );

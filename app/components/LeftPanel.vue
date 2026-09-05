@@ -67,7 +67,7 @@ function roleBadge(role: Row['role']): { label: string, color: 'primary' | 'neut
           class="relative rounded-none p-1"
           @click="uiState.memberDetailId = row.id"
         >
-          <UAvatar :src="getUserInfo(row.id)?.avatar" :alt="getUserInfo(row.id)?.name" size="sm" :class="[isChair(meeting, row.id) && 'ring-2 ring-primary', row.offline && 'opacity-40']" />
+          <UAvatar :src="getUserInfo(row.id)?.avatar ?? undefined" :alt="getUserInfo(row.id)?.name" size="sm" :class="[isChair(meeting, row.id) && 'ring-2 ring-primary', row.offline && 'opacity-40']" />
           <span
             v-if="row.hasFloor"
             class="bg-success absolute bottom-0.5 right-0.5 size-2 rounded-full ring-2 ring-default"

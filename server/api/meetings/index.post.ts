@@ -1,6 +1,6 @@
 import { createError, defineEventHandler, readValidatedBody } from 'h3';
-import { z } from 'zod';
-import { requireVerifiedSession } from '#server/utils/auth';
+import * as z from 'zod';
+import { requireAuthenticated, requireVerifiedSession } from '#server/utils/auth';
 import { getDb } from '#server/utils/db';
 import { meetingCodes, meetings } from '#server/utils/db/schema';
 import { generateCode } from '#server/utils/id';
@@ -12,12 +12,13 @@ const bodySchema = z.object({ title: z.string().optional() });
 const CODE_LENGTH = 6;
 
 export default defineEventHandler(async (event) => {
-  const session = await requireVerifiedSession(event.headers);
+  const authen = await requireAuthenticated(event.headers);
+  requireVerifiedSession(authen);
   const body = await readValidatedBody(event, bodySchema.parse);
   const title = body.title?.trim() || '未命名会议';
   const [meeting] = await getDb().insert(meetings).values({
     title,
-    chairId: session.user.id,
+    chairId: authen.user.id,
     status: MeetingStatusMap.NOT_STARTED,
   }).returning({ id: meetings.id });
   let code = '';
@@ -27,5 +28,5 @@ export default defineEventHandler(async (event) => {
     if (inserted.length)
       return { id: meeting!.id, code, title };
   }
-  throw createError({ statusCode: 500, message: '入会码生成失败，请重试' });
+  throw createError({ status: 500, message: '入会码生成失败，请重试' });
 });

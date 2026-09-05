@@ -1,7 +1,7 @@
 import type { PeerIdentity, RoomPeer } from '#server/utils/rooms';
 import { eq } from 'drizzle-orm';
 import { createError, defineWebSocketHandler } from 'h3';
-import { z } from 'zod';
+import * as z from 'zod';
 import { getAuth } from '#server/utils/auth';
 import { getDb } from '#server/utils/db';
 import { meetings } from '#server/utils/db/schema';

@@ -1,11 +1,13 @@
 <script setup lang="ts">
+import type { DropdownMenuItem } from '@nuxt/ui';
 import { authClient } from '~/utils/auth';
 
 const session = authClient.useSession();
 
-async function onSignOut(): Promise<void> {
-  await authClient.signOut();
-}
+const userMenuItems: DropdownMenuItem[] = [
+  { icon: 'i-lucide-user', label: '个人资料', to: '/profile' },
+  { icon: 'i-lucide-log-out', label: '退出登录', onClick: () => authClient.signOut() },
+];
 </script>
 
 <template>
@@ -15,27 +17,23 @@ async function onSignOut(): Promise<void> {
         <img src="~/assets/brand/gavity.svg" alt="Gavity" class="h-6 w-auto">
         <span class="text-2xl text-highlighted" style="font-family: Google Sans Flex;">Gavity</span>
       </NuxtLink>
+
       <div class="flex-1" />
+
       <template v-if="!session.isPending">
         <template v-if="session?.data?.user">
-          <div class="flex items-center gap-2">
-            <UAvatar :alt="session.data.user.name || session.data.user.email" size="2xs" />
-            <span class="text-sm text-default">{{ session.data.user.name || session.data.user.email }}</span>
-          </div>
-          <UButton
-            label="退出登录"
-            icon="i-lucide-log-out"
-            color="neutral"
-            variant="outline"
-            size="sm"
-            @click="onSignOut"
-          />
+          <UDropdownMenu size="lg" :items="userMenuItems">
+            <div class="flex items-center cursor-pointer">
+              <UAvatar :alt="session.data.user.name || session.data.user.email" />
+            </div>
+          </UDropdownMenu>
         </template>
         <template v-else>
-          <UButton to="/login" label="登录 / 注册" size="sm" />
+          <UButton to="/login" label="登录 / 注册" />
         </template>
       </template>
-      <UColorModeButton color="neutral" variant="outline" size="sm" />
+
+      <UColorModeButton color="neutral" variant="ghost" size="sm" />
     </header>
     <slot />
   </div>

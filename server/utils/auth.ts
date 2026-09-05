@@ -83,6 +83,12 @@ export const getAuth = toCachedFn(() => {
       requireEmailVerification: true,
     },
 
+    user: {
+      changeEmail: {
+        enabled: true,
+      },
+    },
+
     emailVerification: {
       autoSignInAfterVerification: true,
       sendOnSignUp: true,
@@ -125,30 +131,28 @@ export const getAuth = toCachedFn(() => {
 });
 
 export type Auth = ReturnType<typeof getAuth>;
+export type AuthenticationResult = Auth['$Infer']['Session'];
+export type Session = AuthenticationResult['session'];
+export type User = AuthenticationResult['user'];
 
-export async function requireAdminSession(headers: Headers): Promise<NonNullable<Awaited<ReturnType<Auth['api']['getSession']>>>> {
+export async function requireAuthenticated(headers: Headers): Promise<AuthenticationResult> {
   const session = await getAuth().api.getSession({ headers });
-  if (!session) {
+  if (!session)
     throw createError({ status: 401, message: '请先登录' });
-  }
-  if (!session.user.emailVerified) {
-    throw createError({ status: 403, message: '请先完成邮箱验证' });
-  }
-  const roles = session.user.role?.split(',').map(role => role.trim()) ?? [];
-  if (!roles.includes('admin')) {
-    throw createError({ status: 403, message: '无权限访问' });
-  }
   return session;
 }
 
-/** 校验登录态与邮箱验证状态，未通过时抛出 HTTP 错误。 */
-export async function requireVerifiedSession(headers: Headers): Promise<NonNullable<Awaited<ReturnType<Auth['api']['getSession']>>>> {
-  const session = await getAuth().api.getSession({ headers });
-  if (!session) {
-    throw createError({ status: 401, message: '请先登录' });
-  }
-  if (!session.user.emailVerified) {
+export function hasAdminRole(user: User): boolean {
+  const roles = user.role?.split(',') ?? [];
+  return roles.includes('admin');
+}
+
+export function requireAdminRole(authen: AuthenticationResult): void {
+  if (!hasAdminRole(authen.user))
+    throw createError({ status: 403, message: '无权限访问' });
+}
+
+export function requireVerifiedSession(authen: AuthenticationResult): void {
+  if (!authen.user.emailVerified)
     throw createError({ status: 403, message: '请先完成邮箱验证' });
-  }
-  return session;
 }
